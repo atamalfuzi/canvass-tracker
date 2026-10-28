@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campaign Analytics</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; padding: 1rem; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { background: white; padding: 1.5rem; border-radius: 12px 12px 0 0; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+        header h1 { font-size: 1.6rem; color: #1a73e8; margin-bottom: 0.3rem; }
+        header p { font-size: 0.9rem; color: #666; }
+        .config-section { background: white; padding: 1rem; border-top: 1px solid #eee; display: flex; gap: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+        .status { padding: 0.6rem 1rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; background: #f3f3f3; color: #666; }
+        .status.connected { background: #d4edda; color: #155724; }
+        .content { background: white; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+        .tabs { display: flex; gap: 0; border-bottom: 2px solid #eee; margin-bottom: 1.5rem; }
+        .tab-btn { padding: 0.8rem 1.5rem; border: none; background: none; cursor: pointer; font-size: 1rem; font-weight: 500; color: #999; position: relative; }
+        .tab-btn:hover { color: #666; }
+        .tab-btn.active { color: #1a73e8; }
+        .tab-btn.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 2px; background: #1a73e8; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .stat-box { padding: 1.5rem; border: 1px solid #eee; border-radius: 8px; text-align: center; background: #f9f9f9; }
+        .stat-number { font-size: 2.5rem; font-weight: 700; color: #1a73e8; }
+        .stat-label { font-size: 0.9rem; color: #666; margin-top: 0.5rem; }
+        .chart-container { position: relative; height: 300px; margin-bottom: 2rem; }
+        .map-shell { display: grid; grid-template-columns: minmax(0, 2.15fr) minmax(310px, 0.85fr); gap: 1rem; align-items: start; }
+        .map-canvas { height: 700px; border-radius: 8px; border: 1px solid #dbe2ea; overflow: hidden; background: #e8eef5; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08); }
+        .map-sidebar { display: flex; flex-direction: column; gap: 1rem; }
+        .panel { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; }
+        .panel.collapsible { padding: 0; overflow: hidden; }
+        .panel-header { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.85rem 1rem; border: 0; background: transparent; cursor: pointer; text-align: left; color: #202124; }
+        .panel-header h3 { margin: 0; font-size: 1rem; color: #202124; }
+        .panel-header:hover { background: #f3f4f6; }
+        .panel-summary { color: #6b7280; font-size: 0.78rem; font-weight: 600; }
+        .panel-chevron { color: #64748b; font-size: 0.9rem; transition: transform 160ms ease; }
+        .panel-body { padding: 0 1rem 1rem; }
+        .panel.collapsed .panel-body { display: none; }
+        .panel.collapsed .panel-chevron { transform: rotate(-90deg); }
+        .panel h3 { font-size: 1rem; margin-bottom: 0.75rem; color: #202124; }
+        .panel small { color: #6b7280; }
+        .panel-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+        .small-btn { padding: 0.55rem 0.8rem; border: 1px solid #d1d5db; background: #fff; border-radius: 8px; cursor: pointer; font-weight: 600; color: #1f2937; }
+        .small-btn.primary { background: #1a73e8; color: white; border-color: #1a73e8; }
+        .small-btn:hover { filter: brightness(0.97); }
+        .small-btn.compact { padding: 0.42rem 0.6rem; font-size: 0.8rem; }
+        .progress-card { display: none; flex-direction: column; gap: 0.45rem; background: #eef6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 0.65rem; margin-bottom: 0.75rem; font-size: 0.85rem; color: #1d4ed8; }
+        .progress-card.error { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+        .progress-card.done { background: #ecfdf5; border-color: #bbf7d0; color: #047857; }
+        .progress-label { display: flex; justify-content: space-between; gap: 0.75rem; font-weight: 700; }
+        .progress-detail { color: #475569; font-size: 0.78rem; }
+        .progress-track { height: 7px; overflow: hidden; border-radius: 999px; background: rgba(59, 130, 246, 0.16); }
+        .progress-fill { height: 100%; width: 0%; border-radius: inherit; background: #2563eb; transition: width 180ms ease; }
+        .marker-list { max-height: 320px; overflow: auto; display: flex; flex-direction: column; gap: 0.5rem; }
+        .marker-item { background: white; border: 1px solid #e5e7eb; border-radius: 10px; padding: 0.75rem; display: flex; gap: 0.75rem; align-items: flex-start; }
+        .marker-item input { margin-top: 0.2rem; }
+        .marker-item .meta { flex: 1; }
+        .marker-item .title { font-weight: 700; color: #111827; }
+        .marker-item .sub { font-size: 0.85rem; color: #6b7280; margin-top: 0.25rem; }
+        .legend { display: flex; flex-direction: column; gap: 0.5rem; max-height: 360px; overflow: auto; padding-right: 0.15rem; }
+        .legend-row { display: flex; align-items: flex-start; gap: 0.6rem; font-size: 0.9rem; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 0.55rem; }
+        .legend-row.off { opacity: 0.55; }
+        .legend-row input { margin-top: 0.18rem; cursor: pointer; }
+        .legend-row input[type="color"] { width: 30px; height: 26px; padding: 0; border: 1px solid #d1d5db; border-radius: 4px; background: #fff; }
+        .swatch { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.15); }
+        .swatch.advance { background: rgba(235, 87, 87, 0.9); }
+        .swatch.station { background: rgba(26, 115, 232, 0.9); }
+        .import-status { margin-top: 0.55rem; font-size: 0.85rem; color: #0f766e; }
+        .route-table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        .route-table th { text-align: left; padding: 0.8rem; background: #f9f9f9; font-weight: 600; font-size: 0.9rem; color: #202124; }
+        .route-table td { padding: 0.8rem; border-top: 1px solid #eee; }
+        .route-table tr:hover { background: #f9f9f9; }
+        .records-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+        .records-table th { text-align: left; padding: 0.8rem; background: #f9f9f9; font-weight: 600; color: #202124; }
+        .records-table td { padding: 0.8rem; border-top: 1px solid #eee; }
+        .records-table tr:hover { background: #f9f9f9; }
+        .badge { display: inline-block; padding: 0.3rem 0.7rem; border-radius: 12px; font-size: 0.8rem; font-weight: 600; }
+        .badge.green { background: #d4edda; color: #155724; }
+        .badge.yellow { background: #fff3cd; color: #856404; }
+        .badge.red { background: #f8d7da; color: #721c24; }
+        .badge.dark { background: #1f2937; color: #fff; }
+        .badge.gray { background: #e5e7eb; color: #374151; }
+        button[type="button"]:disabled { opacity: 0.6; cursor: not-allowed; }
+        .station-badge-wrapper, .record-badge-wrapper { background: transparent; border: none; }
+        .station-icon { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 999px; color: white; font-size: 0.74rem; font-weight: 800; border: 2px solid #fff; box-shadow: 0 5px 15px rgba(15, 23, 42, 0.25); }
+        .station-icon.regular { background: #2563eb; }
+        .station-icon.advance { background: #dc2626; }
+        .record-dot { width: 18px; height: 18px; border-radius: 999px; border: 2px solid #fff; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.24); }
+        .record-dot.selected { width: 22px; height: 22px; outline: 3px solid rgba(52, 168, 83, 0.32); }
+        .filter-box { margin-bottom: 1.5rem; display: flex; gap: 0.5rem; }
+        .filter-box input { flex: 1; padding: 0.6rem; border: 1px solid #dadce0; border-radius: 4px; }
+        .filter-box button { padding: 0.6rem 1.2rem; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; }
+        footer { background: white; padding: 1rem; text-align: center; font-size: 0.8rem; color: #999; margin-top: 1rem; border-radius: 0 0 12px 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+        @media (max-width: 768px) {
+            .tabs { flex-wrap: wrap; }
+            .tab-btn { padding: 0.6rem 1rem; font-size: 0.9rem; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .map-shell { grid-template-columns: 1fr; }
+            .map-canvas { height: 420px; }
+            .route-table, .records-table { font-size: 0.8rem; }
+            .route-table th, .records-table th { padding: 0.5rem; }
+            .route-table td, .records-table td { padding: 0.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Campaign Analytics</h1>
+            <p>Coquitlam Canvassing Dashboard</p>
+        </header>
+
+        <div class="config-section">
+            <div style="flex:1"></div>
+            <div id="connection-status" class="status">Disconnected</div>
+        </div>
+
+        <div class="content">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="analytics.switchTab('overview', this)">Overview</button>
+                <button class="tab-btn" onclick="analytics.switchTab('map', this)">Map</button>
+                <button class="tab-btn" onclick="analytics.switchTab('routes', this)">Routes</button>
+                <button class="tab-btn" onclick="analytics.switchTab('followup', this)">Follow-ups</button>
+                <button class="tab-btn" onclick="analytics.switchTab('lawnsigns', this)">Lawn Signs</button>
+            </div>
+
+            <!-- Overview Tab -->
+            <div id="overview" class="tab-content active">
+                <div class="stats-grid" id="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-number" id="total-doors">0</div>
+                        <div class="stat-label">Total Doors Knocked</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number" id="answered">0</div>
+                        <div class="stat-label">Follow-ups Needed</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number" id="supporters">0</div>
+                        <div class="stat-label">Supporters</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number" id="undecided">0</div>
+                        <div class="stat-label">Undecided</div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="supportChart"></canvas>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="resultChart"></canvas>
+                </div>
+            </div>
+
+            <div id="map" class="tab-content">
+                <div class="map-shell">
+                    <div id="mapCanvas" class="map-canvas"></div>
+                    <div class="map-sidebar">
+                        <div class="panel collapsible" id="priorityZonesPanel">
+                            <button class="panel-header" type="button" onclick="analytics.toggleSidebarPanel('priorityZonesPanel')" aria-expanded="true">
+                                <div>
+                                    <h3>Priority zones</h3>
+                                    <span class="panel-summary" id="priorityZonesSummary">Regular stations visible</span>
+                                </div>
+                                <span class="panel-chevron">▼</span>
+                            </button>
+                            <div class="panel-body">
+                                <div id="geocodeProgress" class="progress-card" aria-live="polite">
+                                    <div class="progress-label">
+                                        <span id="geocodeProgressTitle">Loading map</span>
+                                        <span id="geocodeProgressCount">0%</span>
+                                    </div>
+                                    <div class="progress-track"><div id="geocodeProgressFill" class="progress-fill"></div></div>
+                                    <div id="geocodeProgressDetail" class="progress-detail">Preparing geocodes...</div>
+                                </div>
+                                <div class="panel-actions" style="margin-top:0; margin-bottom:0.75rem;">
+                                    <button class="small-btn compact" type="button" onclick="analytics.setAllStationVisibility(true)">Show all</button>
+                                    <button class="small-btn compact" type="button" onclick="analytics.setAllStationVisibility(false)">Hide all</button>
+                                    <button class="small-btn compact" type="button" onclick="analytics.setRegularStationVisibility()">Regular only</button>
+                                </div>
+                                <div id="stationLegend" class="legend"></div>
+                                <div class="panel-actions">
+                                    <button class="small-btn" type="button" id="refreshMapBtn" onclick="analytics.refreshMap()">Refresh map</button>
+                                    <button class="small-btn" type="button" onclick="analytics.fitMap()">Fit view</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="panel collapsible" id="walkingListPanel">
+                            <button class="panel-header" type="button" onclick="analytics.toggleSidebarPanel('walkingListPanel')" aria-expanded="true">
+                                <div>
+                                    <h3>Selected walking list</h3>
+                                    <span class="panel-summary" id="walkingListSummary">No selected targets</span>
+                                </div>
+                                <span class="panel-chevron">▼</span>
+                            </button>
+                            <div class="panel-body">
+                                <div class="panel-actions" style="margin-top:0;">
+                                    <input type="text" id="routeNameInput" placeholder="Route name" style="width:100%; padding:0.55rem; border:1px solid #d1d5db; border-radius:6px;">
+                                    <input type="text" id="routeAssigneeInput" placeholder="Assigned to" style="width:100%; padding:0.55rem; border:1px solid #d1d5db; border-radius:6px;">
+                                    <input type="date" id="routeDateInput" style="width:100%; padding:0.55rem; border:1px solid #d1d5db; border-radius:6px;">
+                                    <button class="small-btn primary" type="button" onclick="analytics.saveSelectedRoute()">Save to routes</button>
+                                </div>
+                                <div id="routeSaveStatus" class="import-status"></div>
+                                <div id="selectedMarkerList" class="marker-list" style="margin-top:0.75rem;"></div>
+                            </div>
+                        </div>
+
+                        <div class="panel collapsible" id="addressGroupsPanel">
+                            <button class="panel-header" type="button" onclick="analytics.toggleSidebarPanel('addressGroupsPanel')" aria-expanded="true">
+                                <div>
+                                    <h3>Address groups</h3>
+                                    <span class="panel-summary" id="addressGroupsSummary">Loading Sheet tabs...</span>
+                                </div>
+                                <span class="panel-chevron">▼</span>
+                            </button>
+                            <div class="panel-body">
+                                <label class="legend-row">
+                                    <input type="checkbox" id="showCanvassResponses" checked onchange="analytics.toggleCanvassResponses(this.checked)">
+                                    <span style="flex:1;"><strong>Canvass Responses</strong><br><small>Door-knocker submissions</small></span>
+                                </label>
+                                <small>Each named tab copied from the template can be shown or hidden on the map.</small>
+                                <div id="addressGroupList" class="legend" style="margin-top:0.75rem;"></div>
+                                <div class="panel-actions">
+                                    <button class="small-btn" type="button" onclick="analytics.refreshAddressGroups()">Refresh groups</button>
+                                    <button class="small-btn primary" type="button" onclick="analytics.preGeocodeSelectedAddressGroups()">Pre-geocode selected</button>
+                                </div>
+                                <div id="addressGroupStatus" class="import-status"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Routes Tab -->
+            <div id="routes" class="tab-content">
+                <table class="route-table">
+                    <thead>
+                        <tr>
+                            <th>Route</th>
+                            <th>Assigned To</th>
+                            <th>Date</th>
+                            <th>Stops</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="route-table-body">
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Follow-ups Tab -->
+            <div id="followup" class="tab-content">
+                <div class="filter-box">
+                    <input type="text" id="followup-search" placeholder="Search address..." onkeyup="analytics.filterFollowups()">
+                </div>
+                <table class="records-table">
+                    <thead>
+                        <tr>
+                            <th>Address</th>
+                            <th>Name</th>
+                            <th>Phone / Email</th>
+                            <th>Support</th>
+                            <th>Lawn Sign</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="followup-table-body">
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="lawnsigns" class="tab-content">
+                <div class="filter-box">
+                    <input type="text" id="lawn-sign-search" placeholder="Search lawn signs..." onkeyup="analytics.filterLawnSigns()">
+                    <button onclick="analytics.filterLawnSigns()">Search</button>
+                    <button onclick="analytics.exportLawnSignsCSV()">Export CSV</button>
+                </div>
+                <table class="records-table">
+                    <thead>
+                        <tr>
+                            <th>Address</th>
+                            <th>Name</th>
+                            <th>Phone</th>
+                            <th>Email</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lawn-sign-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <footer>
+            Data updates automatically • Last refresh shown above
+        </footer>
+    </div>
+
+    <script>
+        // Paste the Apps Script web app URL (ends in /exec) into the copy you use. Don't commit it.
+        const DEFAULT_WEBAPP_URL = '';
+        // Open the dashboard as analysis.html#key=... with the ADMIN_KEY script property.
+        const ADMIN_KEY = new URLSearchParams(location.hash.slice(1)).get('key') || '';
+        const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&bounded=1&viewbox=-123.5,49.0,-122.2,49.5&q=';
+        const DEFAULT_CENTER = [49.2806, -122.7896];
+        const ADDRESS_GROUP_COLORS = [
+            '#2563eb', '#dc2626', '#16a34a', '#ca8a04', '#9333ea',
+            '#0891b2', '#ea580c', '#db2777', '#4f46e5', '#0f766e',
+            '#be123c', '#65a30d', '#7c3aed', '#0284c7', '#c2410c',
+            '#a21caf', '#047857', '#b45309', '#1d4ed8', '#475569'
+        ];
+
+        const POLLING_STATIONS = [
+            { code: 'AD1', name: 'Centennial Adv.', address: '620 Poirier St, Coquitlam, BC', kind: 'advance' },
+            { code: 'AD2', name: 'Innovation Adv.', address: '1207 Pinetree Way, Coquitlam, BC', kind: 'advance' },
+            { code: '1', name: 'Hillcrest', address: '2161 Regan Ave, Coquitlam, BC', kind: 'regular' },
+            { code: '2', name: 'Mundy Road', address: '2200 Austin Ave, Coquitlam, BC', kind: 'regular' },
+            { code: '3', name: 'Innovation', address: '1207 Pinetree Way, Coquitlam, BC', kind: 'regular' },
+            { code: '4', name: 'Glen', address: '3064 Glen Dr, Coquitlam, BC', kind: 'regular' },
+            { code: '5', name: 'Bramblewood', address: '2875 Panorama Dr, Coquitlam, BC', kind: 'regular' },
+            { code: '6', name: 'Mountain View', address: '740 Smith Ave, Coquitlam, BC', kind: 'regular' },
+            { code: '7', name: 'Smiling Creek', address: '3456 Princeton Ave, Coquitlam, BC', kind: 'regular' },
+            { code: '8', name: 'Como Lake Middle', address: '1121 King Albert Ave, Coquitlam, BC', kind: 'regular' },
+            { code: '9', name: 'Eagle Ridge Elementary', address: '1215 Falcon Dr, Coquitlam, BC', kind: 'regular' },
+            { code: '10', name: 'Alderson', address: '825 Gauthier Ave, Coquitlam, BC', kind: 'regular' },
+            { code: '11', name: 'Panorama', address: '1455 Johnson St, Coquitlam, BC', kind: 'regular' },
+            { code: '12', name: 'Nestor', address: '1266 Nestor St, Coquitlam, BC', kind: 'regular' },
+            { code: '13', name: 'Cape Horn', address: '155 Finnigan St, Coquitlam, BC', kind: 'regular' },
+            { code: '14', name: 'Walton', address: '2960 Walton Ave, Coquitlam, BC', kind: 'regular' },
+            { code: '15', name: 'Ranch Park', address: '2701 Spuraway Ave, Coquitlam, BC', kind: 'regular' },
+            { code: '16', name: 'Lord Baden', address: '450 Joyce St, Coquitlam, BC', kind: 'regular' },
+            { code: '17', name: 'Porter Street', address: '728 Porter St, Coquitlam, BC', kind: 'regular' },
+            { code: '18', name: 'Riverview', address: '700 Clearwater Way, Coquitlam, BC', kind: 'regular' },
+            { code: '19', name: 'Victoria Hall', address: '3435 Victoria Dr, Coquitlam, BC', kind: 'regular' },
+            { code: '20', name: 'Miller Park', address: '800 Egmont Ave, Coquitlam, BC', kind: 'regular' },
+            { code: '21', name: 'Harbourview', address: '960 Lillian St, Coquitlam, BC', kind: 'regular' },
+            { code: '22', name: 'Meadowbrook', address: '900 Sharpe St, Coquitlam, BC', kind: 'regular' },
+            { code: '23', name: 'Montgomery', address: '1900 Edgewood Ave, Coquitlam, BC', kind: 'regular' },
+            { code: 'N/A', name: 'Victoria Adv.', address: '800 Egmont Ave, Coquitlam, BC', kind: 'advance' }
+        ];
+
+        const analytics = {
+            apiUrl: DEFAULT_WEBAPP_URL,
+            allData: [],
+            charts: {},
+            map: null,
+            mapLayers: {},
+            displayCoordBuckets: {},
+            pollingStations: POLLING_STATIONS.map(station => ({ ...station, coords: null })),
+            selectedTargets: [],
+            importedTargets: [],
+            addressGroups: [],
+            selectedAddressGroups: [],
+            addressGroupColors: {},
+            showCanvassResponses: true,
+            savedRoutes: [],
+            geocodeCache: {},
+            stationVisibility: {},
+            lastGeocodeUsedNetwork: false,
+
+            init() {
+                this.geocodeCache = this.loadCache('geocodeCache');
+                this.selectedTargets = this.loadCache('selectedTargets', []);
+                this.selectedAddressGroups = this.loadCache('selectedAddressGroups', []);
+                this.addressGroupColors = this.loadCache('addressGroupColors', {});
+                this.showCanvassResponses = this.loadCache('showCanvassResponses', true);
+                this.stationVisibility = this.loadCache('stationVisibility', {});
+                this.initializeStationVisibility();
+                this.ensureMap();
+                this.renderSelectedList();
+                this.renderLegend();
+                this.ensureFollowupExportButton();
+                const responsesToggle = document.getElementById('showCanvassResponses');
+                if (responsesToggle) responsesToggle.checked = this.showCanvassResponses;
+                const routeDateInput = document.getElementById('routeDateInput');
+                if (routeDateInput && !routeDateInput.value) routeDateInput.value = new Date().toISOString().slice(0, 10);
+                this.loadData();
+            },
+
+            loadCache(key, fallback = {}) {
+                try {
+                    return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
+                } catch {
+                    return fallback;
+                }
+            },
+
+            saveCache(key, value) {
+                localStorage.setItem(key, JSON.stringify(value));
+            },
+
+            async api(params, post = false) {
+                const body = new URLSearchParams({ ...params, key: ADMIN_KEY });
+                const response = post ? await fetch(this.apiUrl, { method: 'POST', body }) : await fetch(`${this.apiUrl}?${body}`);
+                const payload = await response.json();
+                if (!payload.success) throw new Error(payload.error || 'Request failed.');
+                return payload.data;
+            },
+
+            initializeStationVisibility() {
+                let changed = false;
+                this.pollingStations.forEach(station => {
+                    if (!Object.prototype.hasOwnProperty.call(this.stationVisibility, station.code)) {
+                        this.stationVisibility[station.code] = station.kind !== 'advance';
+                        changed = true;
+                    }
+                });
+                Object.keys(this.stationVisibility).forEach(code => {
+                    if (!this.pollingStations.some(station => station.code === code)) {
+                        delete this.stationVisibility[code];
+                        changed = true;
+                    }
+                });
+                if (changed || Object.keys(this.stationVisibility).length === 0) {
+                    this.saveCache('stationVisibility', this.stationVisibility);
+                }
+            },
+
+            async loadData() {
+                const status = document.getElementById('connection-status');
+                try {
+                    this.allData = await this.api({ action: 'getAllData' });
+                    this.applyStoredCoordinates();
+                    this.updateOverview();
+                    await this.loadSavedRoutes();
+                    this.updateFollowups();
+                    this.updateLawnSigns();
+                    status.textContent = '✓ Connected';
+                    status.className = 'status connected';
+                    await this.refreshAddressGroups(false);
+                    await this.refreshMap();
+                } catch (error) {
+                    status.textContent = 'Error loading data';
+                    status.title = error.message;
+                    status.className = 'status';
+                    console.error('Error:', error);
+                }
+            },
+
+            ensureMap() {
+                if (this.map) return;
+                this.map = L.map('mapCanvas', { preferCanvas: true }).setView(DEFAULT_CENTER, 11);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; OpenStreetMap contributors'
+                }).addTo(this.map);
+
+                this.mapLayers = {
+                    zones: L.layerGroup().addTo(this.map),
+                    stations: L.layerGroup().addTo(this.map),
+                    records: L.layerGroup().addTo(this.map),
+                    imported: L.layerGroup().addTo(this.map)
+                };
+            },
+
+            invalidateMap() {
+                if (!this.map) return;
+                setTimeout(() => this.map.invalidateSize(), 80);
+            },
+
+            async refreshMap() {
+                this.ensureMap();
+                this.invalidateMap();
+                const progressEl = document.getElementById('geocodeProgress');
+                const refreshBtn = document.getElementById('refreshMapBtn');
+                if (progressEl) {
+                    progressEl.className = 'progress-card';
+                    progressEl.style.display = 'flex';
+                }
+                if (refreshBtn) refreshBtn.disabled = true;
+                
+                try {
+                    this.setGeocodeProgress('Polling stations', 0, this.pollingStations.length, 'Checking station coordinate cache');
+                    await this.geocodeStations();
+                    
+                    this.setGeocodeProgress('Canvass records', 0, this.allData.length, 'Checking canvass address cache');
+                    await this.geocodeRecords();
+                    
+                    this.setGeocodeProgress('Imported addresses', 0, this.importedTargets.length, 'Checking imported address cache');
+                    await this.geocodeImported();
+                    
+                    this.setGeocodeProgress('Rendering map', 1, 1, 'Drawing visible stations and targets');
+                    this.drawMapLayers({ fit: true });
+                    
+                    this.setGeocodeProgress('Map loaded', 1, 1, 'Cached addresses will load instantly next time');
+                    if (progressEl) progressEl.classList.add('done');
+                    setTimeout(() => {
+                        if (progressEl) progressEl.style.display = 'none';
+                    }, 1500);
+                } catch (error) {
+                    if (progressEl) {
+                        progressEl.classList.add('error');
+                        this.setGeocodeProgress('Map error', 1, 1, 'Open the browser console for details');
+                    }
+                    console.error('Map refresh error:', error);
+                } finally {
+                    if (refreshBtn) refreshBtn.disabled = false;
+                }
+            },
+
+            toggleStationVisibility(code) {
+                this.stationVisibility[code] = !this.stationVisibility[code];
+                this.saveCache('stationVisibility', this.stationVisibility);
+                this.drawMapLayers({ fit: false });
+            },
+
+            setAllStationVisibility(visible) {
+                this.pollingStations.forEach(station => {
+                    this.stationVisibility[station.code] = visible;
+                });
+                this.saveCache('stationVisibility', this.stationVisibility);
+                this.drawMapLayers({ fit: false });
+            },
+
+            setRegularStationVisibility() {
+                this.pollingStations.forEach(station => {
+                    this.stationVisibility[station.code] = station.kind !== 'advance';
+                });
+                this.saveCache('stationVisibility', this.stationVisibility);
+                this.drawMapLayers({ fit: false });
+            },
+
+            toggleSidebarPanel(panelId) {
+                const panel = document.getElementById(panelId);
+                if (!panel) return;
+                const isCollapsed = panel.classList.toggle('collapsed');
+                const header = panel.querySelector('.panel-header');
+                if (header) header.setAttribute('aria-expanded', String(!isCollapsed));
+            },
+
+            updateSidebarSummaries() {
+                const visibleStations = this.pollingStations.filter(station => this.stationVisibility[station.code]).length;
+                const totalStations = this.pollingStations.length;
+                const advanceVisible = this.pollingStations.filter(station => station.kind === 'advance' && this.stationVisibility[station.code]).length;
+                const prioritySummary = document.getElementById('priorityZonesSummary');
+                if (prioritySummary) {
+                    const advanceText = advanceVisible > 0 ? `, ${advanceVisible} advance` : '';
+                    prioritySummary.textContent = `${visibleStations}/${totalStations} stations visible${advanceText}`;
+                }
+
+                const walkingSummary = document.getElementById('walkingListSummary');
+                if (walkingSummary) {
+                    walkingSummary.textContent = this.selectedTargets.length === 1 ? '1 selected target' : `${this.selectedTargets.length} selected targets`;
+                }
+
+                const importSummary = document.getElementById('addressGroupsSummary');
+                if (importSummary) {
+                    const mapped = this.importedTargets.filter(item => item.coords || item._coords).length;
+                    importSummary.textContent = this.selectedAddressGroups.length
+                        ? `${this.selectedAddressGroups.length} selected, ${mapped}/${this.importedTargets.length} mapped`
+                        : `${this.addressGroups.length} Sheet groups available`;
+                }
+            },
+
+            async refreshAddressGroups(redraw = true) {
+                this.setAddressGroupStatus('Loading Sheet tabs...', true);
+                try {
+                    this.addressGroups = await this.api({ action: 'getAddressGroups' });
+                    const availableNames = new Set(this.addressGroups.map(group => group.name));
+                    this.selectedAddressGroups = this.selectedAddressGroups.filter(name => availableNames.has(name));
+                    this.saveCache('selectedAddressGroups', this.selectedAddressGroups);
+                    this.renderAddressGroups();
+                    await this.loadSelectedAddressGroups();
+                    if (redraw) {
+                        await this.geocodeImported();
+                        this.drawMapLayers({ fit: false });
+                    }
+                    this.setAddressGroupStatus(`${this.addressGroups.length} Sheet groups found.`, true);
+                } catch (error) {
+                    this.setAddressGroupStatus(error.message || 'Could not load Sheet groups.', false);
+                    console.error('Address group refresh error:', error);
+                }
+            },
+
+            async toggleAddressGroup(name) {
+                const index = this.selectedAddressGroups.indexOf(name);
+                if (index >= 0) {
+                    this.selectedAddressGroups.splice(index, 1);
+                } else {
+                    this.selectedAddressGroups.push(name);
+                }
+                this.saveCache('selectedAddressGroups', this.selectedAddressGroups);
+                this.renderAddressGroups();
+                this.setAddressGroupStatus('Updating visible groups...', true);
+                await this.loadSelectedAddressGroups();
+                await this.geocodeImported();
+                this.drawMapLayers({ fit: false });
+                this.updateSidebarSummaries();
+                this.setAddressGroupStatus(`${this.selectedAddressGroups.length} groups shown.`, true);
+            },
+
+            toggleCanvassResponses(visible) {
+                this.showCanvassResponses = Boolean(visible);
+                this.saveCache('showCanvassResponses', this.showCanvassResponses);
+                this.drawMapLayers({ fit: false });
+            },
+
+            async saveSelectedRoute() {
+                if (this.selectedTargets.length === 0) {
+                    this.setRouteSaveStatus('Select at least one walking-list target first.', false);
+                    return;
+                }
+                const routeName = document.getElementById('routeNameInput').value.trim();
+                const assignedTo = document.getElementById('routeAssigneeInput').value.trim();
+                const routeDate = document.getElementById('routeDateInput').value;
+                if (!routeName) {
+                    this.setRouteSaveStatus('Add a route name before saving.', false);
+                    return;
+                }
+
+                this.setRouteSaveStatus('Saving route...', true);
+                try {
+                    await this.api({ action: 'saveRoute', routeName, assignedTo, routeDate, targetsJson: JSON.stringify(this.selectedTargets) }, true);
+                    await this.loadSavedRoutes();
+                    this.setRouteSaveStatus(`Saved ${routeName} with ${this.selectedTargets.length} stops.`, true);
+                    document.getElementById('routeNameInput').value = '';
+                    document.getElementById('routeAssigneeInput').value = '';
+                    document.getElementById('routeDateInput').value = new Date().toISOString().slice(0, 10);
+                } catch (error) {
+                    this.setRouteSaveStatus(error.message || 'Could not save route.', false);
+                    console.error('Route save error:', error);
+                }
+            },
+
+            setRouteSaveStatus(message, ok) {
+                const el = document.getElementById('routeSaveStatus');
+                if (!el) return;
+                el.textContent = message;
+                el.style.color = ok ? '#0f766e' : '#b91c1c';
+            },
+
+            async preGeocodeSelectedAddressGroups() {
+                if (this.selectedAddressGroups.length === 0) {
+                    this.setAddressGroupStatus('Select at least one group first.', false);
+                    return;
+                }
+                this.setAddressGroupStatus('Pre-geocoding selected groups in Google Sheets...', true);
+                try {
+                    let updated = 0;
+                    let failed = 0;
+                    for (const name of this.selectedAddressGroups) {
+                        const result = await this.api({ action: 'geocodeAddressGroup', limit: 100, sheet: name });
+                        updated += result.updated || 0;
+                        failed += result.failed || 0;
+                    }
+                    await this.refreshAddressGroups(true);
+                    this.setAddressGroupStatus(`Saved ${updated} coordinates to Sheets${failed ? `; ${failed} addresses could not be matched` : ''}.`, failed === 0);
+                } catch (error) {
+                    this.setAddressGroupStatus(error.message || 'Could not pre-geocode selected groups.', false);
+                    console.error('Address group geocode error:', error);
+                }
+            },
+
+            async loadSelectedAddressGroups() {
+                const responses = await Promise.all(this.selectedAddressGroups.map(async name => {
+                    const rows = await this.api({ action: 'getAddressGroup', sheet: name });
+                    return rows.map(row => this.mapAddressGroupRow(name, row));
+                }));
+                this.importedTargets = responses.flat();
+                this.updateSidebarSummaries();
+            },
+
+            mapAddressGroupRow(groupName, row) {
+                const firstName = String(row.firstName || '').trim();
+                const lastName = String(row.lastName || '').trim();
+                const streetAddress = String(row.streetAddress || row.address || '').trim();
+                const city = String(row.city || 'Coquitlam').trim();
+                const province = String(row.province || 'BC').trim();
+                const postalCode = String(row.postalCode || row.zipCode || '').trim();
+                const lat = parseFloat(row.latitude);
+                const lng = parseFloat(row.longitude);
+                const coords = Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+                return {
+                    key: `sheet-${groupName}-${row.sheetRow}`,
+                    label: [firstName, lastName].filter(Boolean).join(' ') || streetAddress || `Row ${row.sheetRow}`,
+                    addressQuery: [streetAddress, city, province, postalCode, 'Canada'].filter(Boolean).join(', '),
+                    rawAddress: streetAddress,
+                    city,
+                    province,
+                    postalCode,
+                    firstName,
+                    lastName,
+                    phone: row.phoneNumber || row.phone || '',
+                    email: row.email || '',
+                    contacted: row.contacted || '',
+                    lawnSign: row.lawnSign || '',
+                    source: groupName,
+                    notes: row.comment || row.notes || '',
+                    coords,
+                    _coords: coords
+                };
+            },
+
+            getAddressGroupColor(groupName) {
+                if (this.addressGroupColors[groupName]) return this.addressGroupColors[groupName];
+                let hash = 0;
+                for (const char of String(groupName || '')) {
+                    hash = ((hash << 5) - hash + char.charCodeAt(0)) | 0;
+                }
+                return ADDRESS_GROUP_COLORS[Math.abs(hash) % ADDRESS_GROUP_COLORS.length];
+            },
+
+            setAddressGroupColor(groupName, color) {
+                this.addressGroupColors[groupName] = color;
+                this.saveCache('addressGroupColors', this.addressGroupColors);
+                this.renderAddressGroups();
+                this.drawMapLayers({ fit: false });
+            },
+
+            renderAddressGroups() {
+                const container = document.getElementById('addressGroupList');
+                if (!container) return;
+                if (this.addressGroups.length === 0) {
+                    container.innerHTML = '<small>No address-group tabs found yet. Copy the Address List Template tab, rename it, and add rows.</small>';
+                    this.updateSidebarSummaries();
+                    return;
+                }
+                container.innerHTML = this.addressGroups.map(group => {
+                    const checked = this.selectedAddressGroups.includes(group.name);
+                    const color = this.getAddressGroupColor(group.name);
+                    return `
+                        <label class="legend-row ${checked ? '' : 'off'}">
+                            <input type="checkbox" ${checked ? 'checked' : ''} onchange="analytics.toggleAddressGroup(${this.jsArg(group.name)})">
+                            <span class="swatch" style="background:${color};"></span>
+                            <input type="color" value="${color}" onchange="analytics.setAddressGroupColor(${this.jsArg(group.name)}, this.value)" onclick="event.stopPropagation()" aria-label="Choose color for ${this.escapeHtml(group.name)}">
+                            <span style="flex:1;"><strong>${this.escapeHtml(group.name)}</strong><br><small>${group.rowCount} rows</small></span>
+                        </label>
+                    `;
+                }).join('');
+                this.updateSidebarSummaries();
+            },
+
+            setAddressGroupStatus(message, ok) {
+                const el = document.getElementById('addressGroupStatus');
+                if (!el) return;
+                el.textContent = message;
+                el.style.color = ok ? '#0f766e' : '#b91c1c';
+            },
+
+            setGeocodeProgress(title, done, total, detail = '') {
+                const progressEl = document.getElementById('geocodeProgress');
+                if (!progressEl) return;
+                const percent = total > 0 ? Math.round((done / total) * 100) : 100;
+                const titleEl = document.getElementById('geocodeProgressTitle');
+                const countEl = document.getElementById('geocodeProgressCount');
+                const fillEl = document.getElementById('geocodeProgressFill');
+                const detailEl = document.getElementById('geocodeProgressDetail');
+                if (titleEl) titleEl.textContent = title;
+                if (countEl) countEl.textContent = total > 0 ? `${done}/${total}` : 'Done';
+                if (fillEl) fillEl.style.width = `${percent}%`;
+                if (detailEl) detailEl.textContent = detail;
+            },
+
+            async geocodeStations() {
+                for (let i = 0; i < this.pollingStations.length; i++) {
+                    const station = this.pollingStations[i];
+                    if (station.coords) {
+                        this.setGeocodeProgress('Polling stations', i + 1, this.pollingStations.length, `${station.code} already mapped`);
+                        continue;
+                    }
+                    station.coords = await this.geocodeAddress(station.address);
+                    this.setGeocodeProgress('Polling stations', i + 1, this.pollingStations.length, `${station.code} ${this.lastGeocodeUsedNetwork ? 'looked up' : 'loaded from cache'}`);
+                    if (this.lastGeocodeUsedNetwork) {
+                        this.drawMapLayers({ fit: false });
+                        if (i < this.pollingStations.length - 1) await this.sleep(1100);
+                    }
+                }
+            },
+
+            async geocodeRecords() {
+                for (let i = 0; i < this.allData.length; i++) {
+                    const row = this.allData[i];
+                    if (row._coords) {
+                        this.setGeocodeProgress('Canvass records', i + 1, this.allData.length, 'Already mapped');
+                        continue;
+                    }
+                    const query = this.buildAddressQuery(row);
+                    row._coords = await this.geocodeAddress(query);
+                    this.setGeocodeProgress('Canvass records', i + 1, this.allData.length, this.lastGeocodeUsedNetwork ? query : 'Loaded from cache');
+                    if (this.lastGeocodeUsedNetwork) {
+                        if (i % 8 === 0) this.drawMapLayers({ fit: false });
+                        if (i < this.allData.length - 1) await this.sleep(1100);
+                    }
+                }
+            },
+
+            async geocodeImported() {
+                for (let i = 0; i < this.importedTargets.length; i++) {
+                    const row = this.importedTargets[i];
+                    if (row.coords && !row._coords) row._coords = row.coords;
+                    if (row._coords || !row.addressQuery) {
+                        this.setGeocodeProgress('Imported addresses', i + 1, this.importedTargets.length, row._coords ? 'Already mapped' : 'Skipped missing address');
+                        continue;
+                    }
+                    row._coords = await this.geocodeAddress(row.addressQuery);
+                    row.coords = row._coords || row.coords || null;
+                    this.setGeocodeProgress('Imported addresses', i + 1, this.importedTargets.length, this.lastGeocodeUsedNetwork ? row.addressQuery : 'Loaded from cache');
+                    if (this.lastGeocodeUsedNetwork) {
+                        if (i % 5 === 0) this.drawMapLayers({ fit: false });
+                        if (i < this.importedTargets.length - 1) await this.sleep(1100);
+                    }
+                }
+            },
+
+            async geocodeAddress(query) {
+                const cleaned = (query || '').trim();
+                this.lastGeocodeUsedNetwork = false;
+                if (!cleaned) return null;
+
+                const cacheKey = `google-v1:${cleaned.toLowerCase()}`;
+                if (Object.prototype.hasOwnProperty.call(this.geocodeCache, cacheKey)) {
+                    return this.geocodeCache[cacheKey];
+                }
+
+                try {
+                    this.lastGeocodeUsedNetwork = true;
+                    const backendPoint = await this.geocodeAddressWithBackend(cleaned);
+                    if (backendPoint) {
+                        this.geocodeCache[cacheKey] = backendPoint;
+                        this.saveCache('geocodeCache', this.geocodeCache);
+                        return backendPoint;
+                    }
+
+                    for (let attempt = 0; attempt < 2; attempt++) {
+                        this.lastGeocodeUsedNetwork = true;
+                        const response = await fetch(NOMINATIM_URL + encodeURIComponent(cleaned), {
+                            headers: { 'Accept': 'application/json' }
+                        });
+                        const data = await response.json();
+                        if (Array.isArray(data) && data.length > 0) {
+                            const point = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+                            this.geocodeCache[cacheKey] = point;
+                            this.saveCache('geocodeCache', this.geocodeCache);
+                            return point;
+                        }
+                        await this.sleep(250);
+                    }
+                    this.geocodeCache[cacheKey] = null;
+                    this.saveCache('geocodeCache', this.geocodeCache);
+                } catch (error) {
+                    console.warn('Geocode failed for', cleaned, error);
+                }
+                return null;
+            },
+
+            async geocodeAddressWithBackend(query) {
+                try {
+                    const point = await this.api({ action: 'geocodeAddress', q: query });
+                    return { lat: parseFloat(point.lat), lng: parseFloat(point.lng) };
+                } catch (error) {
+                    console.warn('Backend geocode failed for', query, error);
+                }
+                return null;
+            },
+
+            buildAddressQuery(row) {
+                const parts = [row.streetAddress || ''];
+                if (row.postalCode) parts.push(row.postalCode);
+                parts.push('Coquitlam', 'BC', 'Canada');
+                return parts.filter(Boolean).join(', ');
+            },
+
+            applyStoredCoordinates() {
+                this.allData.forEach(row => {
+                    const coords = this.readCoordsFromRow(row);
+                    if (coords) row._coords = coords;
+                });
+            },
+
+            readCoordsFromRow(row) {
+                const lat = parseFloat(row.latitude);
+                const lng = parseFloat(row.longitude);
+                if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+                return { lat, lng };
+            },
+
+            getDisplayCoords(point) {
+                if (!point) return null;
+                const key = `${Number(point.lat).toFixed(6)},${Number(point.lng).toFixed(6)}`;
+                const index = this.displayCoordBuckets[key] || 0;
+                this.displayCoordBuckets[key] = index + 1;
+                if (index === 0) return point;
+
+                const ring = Math.floor((index - 1) / 8) + 1;
+                const slot = (index - 1) % 8;
+                const angle = (Math.PI * 2 * slot) / 8;
+                const meters = 7 * ring;
+                const latOffset = (Math.sin(angle) * meters) / 111320;
+                const lngOffset = (Math.cos(angle) * meters) / (111320 * Math.cos(point.lat * Math.PI / 180));
+                return { lat: point.lat + latOffset, lng: point.lng + lngOffset };
+            },
+
+            makeStationIcon(station) {
+                return L.divIcon({
+                    className: 'station-badge-wrapper',
+                    html: `<div class="station-icon ${station.kind === 'advance' ? 'advance' : 'regular'}">${this.escapeHtml(station.code)}</div>`,
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15]
+                });
+            },
+
+            makeRecordIcon(row, selected) {
+                const support = this.getSupportColor(row);
+                return L.divIcon({
+                    className: 'record-badge-wrapper',
+                    html: `<div class="record-dot ${selected ? 'selected' : ''}" style="background:${support};"></div>`,
+                    iconSize: [selected ? 22 : 18, selected ? 22 : 18],
+                    iconAnchor: [selected ? 11 : 9, selected ? 11 : 9]
+                });
+            },
+
+            makeAddressGroupIcon(row, selected) {
+                const color = this.getAddressGroupColor(row.source);
+                return L.divIcon({
+                    className: 'record-badge-wrapper',
+                    html: `<div class="record-dot ${selected ? 'selected' : ''}" style="background:${color};"></div>`,
+                    iconSize: [selected ? 22 : 18, selected ? 22 : 18],
+                    iconAnchor: [selected ? 11 : 9, selected ? 11 : 9]
+                });
+            },
+
+            drawMapLayers(options = {}) {
+                if (!this.map) return;
+                const shouldFit = options.fit !== false;
+                Object.values(this.mapLayers).forEach(layer => layer.clearLayers());
+                this.displayCoordBuckets = {};
+
+                const bounds = [];
+
+                this.pollingStations.forEach(station => {
+                    if (!station.coords || !this.stationVisibility[station.code]) return;
+                    const isAdvance = station.kind === 'advance';
+                    
+                    L.marker([station.coords.lat, station.coords.lng], {
+                        icon: this.makeStationIcon(station)
+                    }).bindPopup(`<strong>${this.escapeHtml(station.code)} ${this.escapeHtml(station.name)}</strong><br>${this.escapeHtml(station.address)}`).addTo(this.mapLayers.stations);
+
+                    const zoneRadius = isAdvance ? 430 : 390;
+                    const zoneColor = isAdvance ? '#fca5a5' : '#60a5fa';
+                    const zoneStroke = isAdvance ? '#ef4444' : '#3b82f6';
+
+                    L.circle([station.coords.lat, station.coords.lng], {
+                        radius: zoneRadius,
+                        color: zoneStroke,
+                        weight: 1.5,
+                        fillColor: zoneColor,
+                        fillOpacity: 0.09
+                    }).addTo(this.mapLayers.zones);
+
+                    bounds.push([station.coords.lat, station.coords.lng]);
+                });
+
+                if (this.showCanvassResponses) this.allData.forEach(row => {
+                    if (!row._coords) return;
+                    const displayCoords = this.getDisplayCoords(row._coords);
+                    const key = this.getRecordKey(row);
+                    const selected = this.isSelected(key);
+                    const popupHtml = `
+                        <div style="min-width:220px;">
+                            <strong>${this.escapeHtml(this.formatRecordLabel(row))}</strong><br>
+                            ${this.escapeHtml(this.buildAddressQuery(row))}<br>
+                            <small>${this.escapeHtml(row.routeArea || 'Unassigned')} • ${this.escapeHtml(this.normalizeSupportLevel(row))}</small><br>
+                            <button type="button" style="margin-top:8px;padding:6px 10px;border:none;border-radius:6px;background:${selected ? '#34a853' : '#1a73e8'};color:white;cursor:pointer;" onclick="analytics.toggleSelectedByKey(${this.jsArg(key)})">${selected ? 'Selected' : 'Select for walk'}</button>
+                        </div>`;
+
+                    L.marker([displayCoords.lat, displayCoords.lng], {
+                        icon: this.makeRecordIcon(row, selected)
+                    }).bindPopup(popupHtml).addTo(this.mapLayers.records);
+                    bounds.push([displayCoords.lat, displayCoords.lng]);
+                });
+
+                this.importedTargets.forEach(row => {
+                    if (!row._coords) return;
+                    const displayCoords = this.getDisplayCoords(row._coords);
+                    const key = row.key;
+                    const selected = this.isSelected(key);
+                    const popupHtml = `
+                        <div style="min-width:220px;">
+                            <strong>${this.escapeHtml(row.label)}</strong><br>
+                            ${this.escapeHtml(row.addressQuery)}<br>
+                            <small>${this.escapeHtml(row.source || 'Imported')}</small><br>
+                            <button type="button" style="margin-top:8px;padding:6px 10px;border:none;border-radius:6px;background:${selected ? '#34a853' : '#1a73e8'};color:white;cursor:pointer;" onclick="analytics.toggleSelectedByKey(${this.jsArg(key)})">${selected ? 'Selected' : 'Select for walk'}</button>
+                        </div>`;
+
+                    const marker = L.marker([displayCoords.lat, displayCoords.lng], {
+                        icon: this.makeAddressGroupIcon(row, selected)
+                    }).bindPopup(popupHtml);
+                    marker.addTo(this.mapLayers.imported);
+                    bounds.push([displayCoords.lat, displayCoords.lng]);
+                });
+
+                this.renderLegend();
+                this.renderSelectedList();
+
+                if (shouldFit && bounds.length > 0) {
+                    this.map.fitBounds(bounds, { padding: [24, 24] });
+                } else if (shouldFit) {
+                    this.map.setView(DEFAULT_CENTER, 11);
+                }
+            },
+
+            toggleSelectedByKey(key) {
+                const item = this.findSelectableTarget(key);
+                if (item) this.toggleSelected(item);
+            },
+
+            findSelectableTarget(key) {
+                const record = this.allData.find(row => this.getRecordKey(row) === key);
+                if (record) {
+                    return {
+                        key,
+                        label: this.formatRecordLabel(record),
+                        addressQuery: this.buildAddressQuery(record),
+                        city: 'Coquitlam',
+                        province: 'BC',
+                        postalCode: record.postalCode || '',
+                        supportLevel: this.normalizeSupportLevel(record),
+                        firstName: record.firstName || '',
+                        lastName: record.lastName || '',
+                        email: record.email || '',
+                        phone: record.phone || '',
+                        lawnSign: record.lawnSign || '',
+                        contacted: 'Yes',
+                        source: record.routeArea || 'Canvass',
+                        notes: record.notes || '',
+                        coords: record._coords || null
+                    };
+                }
+
+                const imported = this.importedTargets.find(row => row.key === key);
+                if (imported) return { ...imported, coords: imported.coords || imported._coords || null };
+                return null;
+            },
+
+            renderLegend() {
+                const container = document.getElementById('stationLegend');
+                if (!container) return;
+                container.innerHTML = this.pollingStations.map(station => {
+                    const isVisible = this.stationVisibility[station.code];
+                    const isAdvance = station.kind === 'advance';
+                    return `
+                        <div class="legend-row ${isVisible ? '' : 'off'}">
+                            <input type="checkbox" ${isVisible ? 'checked' : ''} onchange="analytics.toggleStationVisibility('${this.escapeHtml(station.code)}')" aria-label="Toggle ${this.escapeHtml(station.code)} visibility">
+                            <span class="swatch ${isAdvance ? 'advance' : 'station'}"></span>
+                            <span style="flex:1;"><strong>${this.escapeHtml(station.code)}</strong> ${this.escapeHtml(station.name)}<br><small>${this.escapeHtml(station.address)}</small></span>
+                        </div>
+                    `;
+                }).join('');
+                this.updateSidebarSummaries();
+            },
+
+            renderSelectedList() {
+                const container = document.getElementById('selectedMarkerList');
+                if (!container) return;
+
+                if (this.selectedTargets.length === 0) {
+                    container.innerHTML = '<small>No selected targets yet. Pick records or imported addresses from the map.</small>';
+                    this.saveCache('selectedTargets', this.selectedTargets);
+                    this.updateSidebarSummaries();
+                    return;
+                }
+
+                container.innerHTML = this.selectedTargets.map(item => `
+                    <div class="marker-item">
+                        <input type="checkbox" checked data-remove-key="${this.escapeHtml(item.key)}" aria-label="Remove from walking list">
+                        <div class="meta">
+                            <div class="title">${this.escapeHtml(item.label || item.addressQuery || item.key)}</div>
+                            <div class="sub">${this.escapeHtml(item.addressQuery || '')}</div>
+                            <div class="sub">${this.escapeHtml([item.city, item.province, item.postalCode].filter(Boolean).join(' '))}</div>
+                            <div class="sub">${this.escapeHtml(item.supportLevel || item.source || '')}</div>
+                        </div>
+                    </div>
+                `).join('');
+
+                container.querySelectorAll('[data-remove-key]').forEach(input => {
+                    input.onchange = () => this.toggleSelected(this.findSelected(input.getAttribute('data-remove-key')));
+                });
+
+                this.saveCache('selectedTargets', this.selectedTargets);
+                this.updateSidebarSummaries();
+            },
+
+            findSelected(key) {
+                return this.selectedTargets.find(item => item.key === key) || null;
+            },
+
+            isSelected(key) {
+                return this.selectedTargets.some(item => item.key === key);
+            },
+
+            toggleSelected(item) {
+                if (!item) return;
+                const idx = this.selectedTargets.findIndex(row => row.key === item.key);
+                if (idx >= 0) {
+                    this.selectedTargets.splice(idx, 1);
+                } else {
+                    this.selectedTargets.push({
+                        key: item.key,
+                        label: item.label || item.addressQuery || item.key,
+                        addressQuery: item.addressQuery || '',
+                        city: item.city || 'Coquitlam',
+                        province: item.province || 'BC',
+                        postalCode: item.postalCode || '',
+                        supportLevel: item.supportLevel || '',
+                        firstName: item.firstName || '',
+                        lastName: item.lastName || '',
+                        email: item.email || '',
+                        phone: item.phone || '',
+                        lawnSign: item.lawnSign || '',
+                        contacted: item.contacted || '',
+                        source: item.source || 'Canvass',
+                        notes: item.notes || '',
+                        coords: item.coords || null
+                    });
+                }
+
+                this.saveCache('selectedTargets', this.selectedTargets);
+                this.renderSelectedList();
+                this.drawMapLayers({ fit: false });
+            },
+
+            fitMap() {
+                if (!this.map) return;
+                const group = [];
+                this.pollingStations.forEach(station => station.coords && this.stationVisibility[station.code] && group.push([station.coords.lat, station.coords.lng]));
+                this.allData.forEach(row => row._coords && group.push([row._coords.lat, row._coords.lng]));
+                this.importedTargets.forEach(row => row._coords && group.push([row._coords.lat, row._coords.lng]));
+                if (group.length > 0) this.map.fitBounds(group, { padding: [24, 24] });
+            },
+
+            getRecordKey(row) {
+                return [row.streetAddress || '', row.unitNumber || '', row.postalCode || '', row.routeArea || ''].join('|').toLowerCase();
+            },
+
+            formatRecordLabel(row) {
+                return `${row.streetAddress || ''}${row.unitNumber ? ' Unit ' + row.unitNumber : ''}`.trim();
+            },
+
+            normalizeSupportLevel(rowOrSupport) {
+                const row = typeof rowOrSupport === 'object' ? rowOrSupport : null;
+                const support = String(row ? row.supportLevel || '' : rowOrSupport || '').trim();
+                const lowered = support.toLowerCase();
+
+                if (support === 'Not a Supporter' || lowered.includes('opponent')) return 'Not a Supporter';
+                if (support === 'Supporter' || lowered.includes('supporter')) return 'Supporter';
+                if (support === 'Undecided') return 'Undecided';
+                if (support === "Not Voting/Can't Vote") return "Not Voting/Can't Vote";
+                if (support === 'Not Home/No Answer') return 'Not Home/No Answer';
+                return support || 'Unknown';
+            },
+
+            getSupportBadge(support) {
+                const normalized = this.normalizeSupportLevel(support);
+                if (normalized === 'Supporter') return 'green';
+                if (normalized === 'Undecided') return 'yellow';
+                if (normalized === 'Not a Supporter') return 'red';
+                if (normalized === 'Not Home/No Answer') return 'dark';
+                return 'gray';
+            },
+
+            getSupportColor(support) {
+                const normalized = this.normalizeSupportLevel(support);
+                if (normalized === 'Supporter') return '#16a34a';
+                if (normalized === 'Undecided') return '#eab308';
+                if (normalized === 'Not a Supporter') return '#dc2626';
+                if (normalized === 'Not Home/No Answer') return '#111827';
+                if (normalized === "Not Voting/Can't Vote") return '#9ca3af';
+                return '#64748b';
+            },
+
+            updateOverview() {
+                const stats = this.calculateStats();
+                document.getElementById('total-doors').textContent = stats.totalDoors;
+                document.getElementById('answered').textContent = stats.followups;
+                document.getElementById('supporters').textContent = stats.supporters;
+                document.getElementById('undecided').textContent = stats.undecided;
+
+                this.drawSupportChart(stats.supportCounts);
+                this.drawResultChart(stats.lawnSignCounts);
+            },
+
+            calculateStats() {
+                const stats = {
+                    totalDoors: this.allData.length,
+                    supporters: 0,
+                    undecided: 0,
+                    followups: 0,
+                    supportCounts: {},
+                    lawnSignCounts: {}
+                };
+
+                this.allData.forEach(row => {
+                    const sup = this.normalizeSupportLevel(row);
+                    if (sup === 'Supporter') stats.supporters++;
+                    if (sup === 'Undecided') stats.undecided++;
+                    if (row.followUpNeeded === 'Yes') stats.followups++;
+                    stats.supportCounts[sup] = (stats.supportCounts[sup] || 0) + 1;
+                    const lawnSign = row.lawnSign === 'Yes' ? 'Lawn sign requested' : 'No lawn sign';
+                    stats.lawnSignCounts[lawnSign] = (stats.lawnSignCounts[lawnSign] || 0) + 1;
+                });
+
+                return stats;
+            },
+
+            drawSupportChart(data) {
+                const ctx = document.getElementById('supportChart').getContext('2d');
+                if (this.charts.support) this.charts.support.destroy();
+                this.charts.support = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(data),
+                        datasets: [{
+                            data: Object.values(data),
+                            backgroundColor: Object.keys(data).map(label => this.getSupportColor(label))
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+                });
+            },
+
+            drawResultChart(data) {
+                const ctx = document.getElementById('resultChart').getContext('2d');
+                if (this.charts.result) this.charts.result.destroy();
+                this.charts.result = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(data),
+                        datasets: [{
+                            label: 'Doors',
+                            data: Object.values(data),
+                            backgroundColor: '#1a73e8'
+                        }]
+                    },
+                    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                });
+            },
+
+            async loadSavedRoutes() {
+                const tbody = document.getElementById('route-table-body');
+                if (!tbody) return;
+                try {
+                    this.savedRoutes = await this.api({ action: 'getSavedRoutes' });
+                    this.renderSavedRoutes();
+                } catch (error) {
+                    tbody.innerHTML = '<tr><td colspan="5">Could not load saved routes.</td></tr>';
+                    console.error('Saved routes load error:', error);
+                }
+            },
+
+            renderSavedRoutes() {
+                const tbody = document.getElementById('route-table-body');
+                if (!tbody) return;
+                if (this.savedRoutes.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5">No saved routes yet. Select targets on the map and save a walking list.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = this.savedRoutes.map(route => `
+                    <tr>
+                        <td><strong>${this.escapeHtml(route.routeName)}</strong></td>
+                        <td>${this.escapeHtml(route.assignedTo || 'Unassigned')}</td>
+                        <td>${this.escapeHtml(route.routeDate || 'No date')}</td>
+                        <td>${(route.targets || []).length}</td>
+                        <td>
+                            <button class="small-btn compact" type="button" onclick="analytics.exportSavedRouteCSV(${this.jsArg(route.routeId)})">Export CSV</button>
+                            <button class="small-btn compact primary" type="button" onclick="analytics.openSavedRoute(${this.jsArg(route.routeId)})">Open map</button>
+                            <button class="small-btn compact" type="button" onclick="analytics.loadSavedRoute(${this.jsArg(route.routeId)})">Load list</button>
+                            <button class="small-btn compact" type="button" onclick="analytics.deleteSavedRoute(${this.jsArg(route.routeId)})">Delete</button>
+                        </td>
+                    </tr>
+                `).join('');
+            },
+
+            findSavedRoute(routeId) {
+                return this.savedRoutes.find(route => route.routeId === routeId) || null;
+            },
+
+            exportSavedRouteCSV(routeId) {
+                const route = this.findSavedRoute(routeId);
+                if (!route) return;
+                const rows = [['Route', 'Assigned To', 'Date', 'Stop', 'Address', 'City', 'Province', 'Postal Code', 'Latitude', 'Longitude', 'Name', 'Phone', 'Email', 'Source', 'Notes']];
+                (route.targets || []).forEach((item, index) => {
+                    rows.push([
+                        route.routeName || '',
+                        route.assignedTo || '',
+                        route.routeDate || '',
+                        index + 1,
+                        item.addressQuery || item.label || '',
+                        item.city || 'Coquitlam',
+                        item.province || 'BC',
+                        item.postalCode || '',
+                        item.coords ? item.coords.lat : '',
+                        item.coords ? item.coords.lng : '',
+                        [item.firstName, item.lastName].filter(Boolean).join(' ') || item.label || '',
+                        item.phone || '',
+                        item.email || '',
+                        item.source || '',
+                        item.notes || ''
+                    ]);
+                });
+                this.downloadCSV(rows, `${route.routeName || 'walking-route'}.csv`);
+            },
+
+            openSavedRoute(routeId) {
+                const route = this.findSavedRoute(routeId);
+                if (!route) return;
+                this.openWalkingRoute(route.targets || []);
+            },
+
+            loadSavedRoute(routeId) {
+                const route = this.findSavedRoute(routeId);
+                if (!route) return;
+                this.selectedTargets = [...(route.targets || [])];
+                this.saveCache('selectedTargets', this.selectedTargets);
+                this.renderSelectedList();
+                this.drawMapLayers({ fit: false });
+            },
+
+            async deleteSavedRoute(routeId) {
+                if (!confirm('Delete this saved route?')) return;
+                try {
+                    await this.api({ action: 'deleteSavedRoute', routeId }, true);
+                    await this.loadSavedRoutes();
+                } catch (error) {
+                    alert(error.message || 'Could not delete route.');
+                    console.error('Saved route delete error:', error);
+                }
+            },
+
+            updateFollowups() {
+                const followups = this.allData.filter(r => r.followUpNeeded === 'Yes');
+                const tbody = document.getElementById('followup-table-body');
+                tbody.innerHTML = '';
+                followups.forEach(row => {
+                    const tr = document.createElement('tr');
+                    const name = [row.firstName, row.lastName].filter(Boolean).join(' ') || '—';
+                    const contact = [row.phone, row.email].filter(Boolean).join(' / ') || '—';
+                    const support = this.normalizeSupportLevel(row);
+                    tr.innerHTML = `
+                        <td>${this.escapeHtml(this.formatRecordLabel(row))}</td>
+                        <td>${this.escapeHtml(name)}</td>
+                        <td>${this.escapeHtml(contact)}</td>
+                        <td><span class="badge ${this.getSupportBadge(support)}">${this.escapeHtml(support)}</span></td>
+                        <td>${this.escapeHtml(row.lawnSign || '—')}</td>
+                        <td>${this.escapeHtml(row.notes ? row.notes.substring(0, 50) + (row.notes.length > 50 ? '...' : '') : '—')}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            },
+
+            filterFollowups() {
+                const query = document.getElementById('followup-search').value.toLowerCase();
+                Array.from(document.getElementById('followup-table-body').rows).forEach(row => {
+                    row.style.display = row.textContent.toLowerCase().includes(query) ? '' : 'none';
+                });
+            },
+
+            ensureFollowupExportButton() {
+                const search = document.getElementById('followup-search');
+                if (!search || document.getElementById('followupExportBtn')) return;
+                const button = document.createElement('button');
+                button.id = 'followupExportBtn';
+                button.type = 'button';
+                button.textContent = 'Export CSV';
+                button.onclick = () => this.exportFollowupsCSV();
+                search.parentElement.appendChild(button);
+            },
+
+            getFollowupRows() {
+                return this.allData.filter(row => row.followUpNeeded === 'Yes');
+            },
+
+            getLawnSignRows() {
+                return this.allData.filter(row => row.lawnSign === 'Yes');
+            },
+
+            updateLawnSigns() {
+                const tbody = document.getElementById('lawn-sign-table-body');
+                if (!tbody) return;
+                tbody.innerHTML = '';
+                this.getLawnSignRows().forEach(row => {
+                    const tr = document.createElement('tr');
+                    const address = `${row.streetAddress || ''}${row.unitNumber ? ' Unit ' + row.unitNumber : ''}`.trim();
+                    const name = [row.firstName, row.lastName].filter(Boolean).join(' ') || '—';
+                    tr.innerHTML = `
+                        <td>${this.escapeHtml(address)}</td>
+                        <td>${this.escapeHtml(name)}</td>
+                        <td>${this.escapeHtml(row.phone || '')}</td>
+                        <td>${this.escapeHtml(row.email || '')}</td>
+                        <td>${this.escapeHtml(row.notes || '')}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            },
+
+            filterLawnSigns() {
+                const query = (document.getElementById('lawn-sign-search')?.value || '').toLowerCase();
+                Array.from(document.getElementById('lawn-sign-table-body').rows).forEach(row => {
+                    row.style.display = row.textContent.toLowerCase().includes(query) ? '' : 'none';
+                });
+            },
+
+            exportFollowupsCSV() {
+                const rows = [['Address', 'Name', 'Phone', 'Email', 'Support Level', 'Lawn Sign', 'Notes']];
+                this.getFollowupRows().forEach(row => {
+                    rows.push([
+                        `${row.streetAddress || ''}${row.unitNumber ? ' Unit ' + row.unitNumber : ''}`.trim(),
+                        [row.firstName, row.lastName].filter(Boolean).join(' '),
+                        row.phone || '',
+                        row.email || '',
+                        this.normalizeSupportLevel(row),
+                        row.lawnSign || '',
+                        row.notes || ''
+                    ]);
+                });
+                this.downloadCSV(rows, 'follow-ups.csv');
+            },
+
+            exportLawnSignsCSV() {
+                const rows = [['Address', 'Name', 'Phone', 'Email', 'Notes']];
+                this.getLawnSignRows().forEach(row => {
+                    rows.push([
+                        `${row.streetAddress || ''}${row.unitNumber ? ' Unit ' + row.unitNumber : ''}`.trim(),
+                        [row.firstName, row.lastName].filter(Boolean).join(' '),
+                        row.phone || '',
+                        row.email || '',
+                        row.notes || ''
+                    ]);
+                });
+                this.downloadCSV(rows, 'lawn-signs.csv');
+            },
+
+            switchTab(tabName, buttonEl = null) {
+                document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+                document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+                document.getElementById(tabName).classList.add('active');
+                if (buttonEl) buttonEl.classList.add('active');
+                if (tabName === 'map') this.invalidateMap();
+            },
+
+            escapeHtml(value) {
+                return String(value || '').replace(/[&<>"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]));
+            },
+
+            // A string argument for an inline onclick="..." handler, safe even with quotes in it.
+            jsArg(value) {
+                return this.escapeHtml(JSON.stringify(value));
+            },
+
+            sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            },
+
+            openWalkingRoute(items) {
+                const selected = items.filter(item => item.coords);
+                if (selected.length < 2) {
+                    alert('Select at least two geocoded targets to build a route.');
+                    return;
+                }
+
+                const ordered = this.orderSelectedTargets(selected);
+                const waypoints = ordered.slice(1, -1).map(item => encodeURIComponent(item.addressQuery)).join('|');
+                const origin = encodeURIComponent(ordered[0].addressQuery);
+                const destination = encodeURIComponent(ordered[ordered.length - 1].addressQuery);
+                const url = `https://www.google.com/maps/dir/?api=1&travelmode=walking&origin=${origin}&destination=${destination}${waypoints ? `&waypoints=${waypoints}` : ''}`;
+                window.open(url, '_blank', 'noopener,noreferrer');
+            },
+
+            downloadCSV(rows, fileName) {
+                const csv = rows.map(r => r.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`).join(',')).join('\n');
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                a.click();
+                URL.revokeObjectURL(url);
+            },
+
+            orderSelectedTargets(items) {
+                const remaining = [...items];
+                const ordered = [remaining.shift()];
+                while (remaining.length > 0) {
+                    const last = ordered[ordered.length - 1];
+                    let nextIndex = 0;
+                    let nextDistance = Infinity;
+                    remaining.forEach((item, index) => {
+                        const distance = this.distanceBetween(last.coords, item.coords);
+                        if (distance < nextDistance) {
+                            nextDistance = distance;
+                            nextIndex = index;
+                        }
+                    });
+                    ordered.push(remaining.splice(nextIndex, 1)[0]);
+                }
+                return ordered;
+            },
+
+            distanceBetween(a, b) {
+                if (!a || !b) return Number.MAX_SAFE_INTEGER;
+                const toRad = deg => deg * Math.PI / 180;
+                const R = 6371000;
+                const dLat = toRad(b.lat - a.lat);
+                const dLon = toRad(b.lng - a.lng);
+                const lat1 = toRad(a.lat);
+                const lat2 = toRad(b.lat);
+                const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+                return 2 * R * Math.asin(Math.sqrt(h));
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => analytics.init());
+    </script>
+</body>
+</html>
