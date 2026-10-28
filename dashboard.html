@@ -261,6 +261,7 @@
             <div id="followup" class="tab-content">
                 <div class="filter-box">
                     <input type="text" id="followup-search" placeholder="Search address..." onkeyup="analytics.filterFollowups()">
+                    <button onclick="analytics.exportFollowupsCSV()">Export CSV</button>
                 </div>
                 <table class="records-table">
                     <thead>
@@ -317,6 +318,14 @@
             '#be123c', '#65a30d', '#7c3aed', '#0284c7', '#c2410c',
             '#a21caf', '#047857', '#b45309', '#1d4ed8', '#475569'
         ];
+
+        const OUTCOME_STYLES = new Map([
+            ['Supporter', { badge: 'green', color: '#16a34a' }],
+            ['Undecided', { badge: 'yellow', color: '#eab308' }],
+            ['Not a Supporter', { badge: 'red', color: '#dc2626' }],
+            ['Not Home/No Answer', { badge: 'dark', color: '#111827' }],
+            ["Not Voting/Can't Vote", { badge: 'gray', color: '#9ca3af' }]
+        ]);
 
         const POLLING_STATIONS = [
             { code: 'AD1', name: 'Centennial Adv.', address: '620 Poirier St, Coquitlam, BC', kind: 'advance' },
@@ -377,11 +386,9 @@
                 this.ensureMap();
                 this.renderSelectedList();
                 this.renderLegend();
-                this.ensureFollowupExportButton();
-                const responsesToggle = document.getElementById('showCanvassResponses');
-                if (responsesToggle) responsesToggle.checked = this.showCanvassResponses;
+                document.getElementById('showCanvassResponses').checked = this.showCanvassResponses;
                 const routeDateInput = document.getElementById('routeDateInput');
-                if (routeDateInput && !routeDateInput.value) routeDateInput.value = new Date().toISOString().slice(0, 10);
+                if (!routeDateInput.value) routeDateInput.value = new Date().toISOString().slice(0, 10);
                 this.loadData();
             },
 
@@ -408,7 +415,7 @@
             initializeStationVisibility() {
                 let changed = false;
                 this.pollingStations.forEach(station => {
-                    if (!Object.prototype.hasOwnProperty.call(this.stationVisibility, station.code)) {
+                    if (!(station.code in this.stationVisibility)) {
                         this.stationVisibility[station.code] = station.kind !== 'advance';
                         changed = true;
                     }
@@ -419,9 +426,7 @@
                         changed = true;
                     }
                 });
-                if (changed || Object.keys(this.stationVisibility).length === 0) {
-                    this.saveCache('stationVisibility', this.stationVisibility);
-                }
+                if (changed) this.saveCache('stationVisibility', this.stationVisibility);
             },
 
             async loadData() {
@@ -446,7 +451,6 @@
             },
 
             ensureMap() {
-                if (this.map) return;
                 this.map = L.map('mapCanvas', { preferCanvas: true }).setView(DEFAULT_CENTER, 11);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     maxZoom: 19,
@@ -462,47 +466,35 @@
             },
 
             invalidateMap() {
-                if (!this.map) return;
                 setTimeout(() => this.map.invalidateSize(), 80);
             },
 
             async refreshMap() {
-                this.ensureMap();
                 this.invalidateMap();
                 const progressEl = document.getElementById('geocodeProgress');
                 const refreshBtn = document.getElementById('refreshMapBtn');
-                if (progressEl) {
-                    progressEl.className = 'progress-card';
-                    progressEl.style.display = 'flex';
-                }
-                if (refreshBtn) refreshBtn.disabled = true;
-                
+                progressEl.className = 'progress-card';
+                progressEl.style.display = 'flex';
+                refreshBtn.disabled = true;
+
                 try {
                     this.setGeocodeProgress('Polling stations', 0, this.pollingStations.length, 'Checking station coordinate cache');
                     await this.geocodeStations();
-                    
                     this.setGeocodeProgress('Canvass records', 0, this.allData.length, 'Checking canvass address cache');
                     await this.geocodeRecords();
-                    
                     this.setGeocodeProgress('Imported addresses', 0, this.importedTargets.length, 'Checking imported address cache');
                     await this.geocodeImported();
-                    
                     this.setGeocodeProgress('Rendering map', 1, 1, 'Drawing visible stations and targets');
                     this.drawMapLayers({ fit: true });
-                    
                     this.setGeocodeProgress('Map loaded', 1, 1, 'Cached addresses will load instantly next time');
-                    if (progressEl) progressEl.classList.add('done');
-                    setTimeout(() => {
-                        if (progressEl) progressEl.style.display = 'none';
-                    }, 1500);
+                    progressEl.classList.add('done');
+                    setTimeout(() => { progressEl.style.display = 'none'; }, 1500);
                 } catch (error) {
-                    if (progressEl) {
-                        progressEl.classList.add('error');
-                        this.setGeocodeProgress('Map error', 1, 1, 'Open the browser console for details');
-                    }
+                    progressEl.classList.add('error');
+                    this.setGeocodeProgress('Map error', 1, 1, 'Open the browser console for details');
                     console.error('Map refresh error:', error);
                 } finally {
-                    if (refreshBtn) refreshBtn.disabled = false;
+                    refreshBtn.disabled = false;
                 }
             },
 
@@ -530,34 +522,20 @@
 
             toggleSidebarPanel(panelId) {
                 const panel = document.getElementById(panelId);
-                if (!panel) return;
                 const isCollapsed = panel.classList.toggle('collapsed');
-                const header = panel.querySelector('.panel-header');
-                if (header) header.setAttribute('aria-expanded', String(!isCollapsed));
+                panel.querySelector('.panel-header').setAttribute('aria-expanded', String(!isCollapsed));
             },
 
             updateSidebarSummaries() {
                 const visibleStations = this.pollingStations.filter(station => this.stationVisibility[station.code]).length;
-                const totalStations = this.pollingStations.length;
                 const advanceVisible = this.pollingStations.filter(station => station.kind === 'advance' && this.stationVisibility[station.code]).length;
-                const prioritySummary = document.getElementById('priorityZonesSummary');
-                if (prioritySummary) {
-                    const advanceText = advanceVisible > 0 ? `, ${advanceVisible} advance` : '';
-                    prioritySummary.textContent = `${visibleStations}/${totalStations} stations visible${advanceText}`;
-                }
-
-                const walkingSummary = document.getElementById('walkingListSummary');
-                if (walkingSummary) {
-                    walkingSummary.textContent = this.selectedTargets.length === 1 ? '1 selected target' : `${this.selectedTargets.length} selected targets`;
-                }
-
-                const importSummary = document.getElementById('addressGroupsSummary');
-                if (importSummary) {
-                    const mapped = this.importedTargets.filter(item => item.coords || item._coords).length;
-                    importSummary.textContent = this.selectedAddressGroups.length
-                        ? `${this.selectedAddressGroups.length} selected, ${mapped}/${this.importedTargets.length} mapped`
-                        : `${this.addressGroups.length} Sheet groups available`;
-                }
+                const advanceText = advanceVisible > 0 ? `, ${advanceVisible} advance` : '';
+                document.getElementById('priorityZonesSummary').textContent = `${visibleStations}/${this.pollingStations.length} stations visible${advanceText}`;
+                document.getElementById('walkingListSummary').textContent = this.selectedTargets.length === 1 ? '1 selected target' : `${this.selectedTargets.length} selected targets`;
+                const mapped = this.importedTargets.filter(item => item.coords || item._coords).length;
+                document.getElementById('addressGroupsSummary').textContent = this.selectedAddressGroups.length
+                    ? `${this.selectedAddressGroups.length} selected, ${mapped}/${this.importedTargets.length} mapped`
+                    : `${this.addressGroups.length} Sheet groups available`;
             },
 
             async refreshAddressGroups(redraw = true) {
@@ -632,7 +610,6 @@
 
             setRouteSaveStatus(message, ok) {
                 const el = document.getElementById('routeSaveStatus');
-                if (!el) return;
                 el.textContent = message;
                 el.style.color = ok ? '#0f766e' : '#b91c1c';
             },
@@ -717,7 +694,6 @@
 
             renderAddressGroups() {
                 const container = document.getElementById('addressGroupList');
-                if (!container) return;
                 if (this.addressGroups.length === 0) {
                     container.innerHTML = '<small>No address-group tabs found yet. Copy the Address List Template tab, rename it, and add rows.</small>';
                     this.updateSidebarSummaries();
@@ -740,72 +716,40 @@
 
             setAddressGroupStatus(message, ok) {
                 const el = document.getElementById('addressGroupStatus');
-                if (!el) return;
                 el.textContent = message;
                 el.style.color = ok ? '#0f766e' : '#b91c1c';
             },
 
             setGeocodeProgress(title, done, total, detail = '') {
-                const progressEl = document.getElementById('geocodeProgress');
-                if (!progressEl) return;
                 const percent = total > 0 ? Math.round((done / total) * 100) : 100;
-                const titleEl = document.getElementById('geocodeProgressTitle');
-                const countEl = document.getElementById('geocodeProgressCount');
-                const fillEl = document.getElementById('geocodeProgressFill');
-                const detailEl = document.getElementById('geocodeProgressDetail');
-                if (titleEl) titleEl.textContent = title;
-                if (countEl) countEl.textContent = total > 0 ? `${done}/${total}` : 'Done';
-                if (fillEl) fillEl.style.width = `${percent}%`;
-                if (detailEl) detailEl.textContent = detail;
+                document.getElementById('geocodeProgressTitle').textContent = title;
+                document.getElementById('geocodeProgressCount').textContent = total > 0 ? `${done}/${total}` : 'Done';
+                document.getElementById('geocodeProgressFill').style.width = `${percent}%`;
+                document.getElementById('geocodeProgressDetail').textContent = detail;
             },
 
-            async geocodeStations() {
-                for (let i = 0; i < this.pollingStations.length; i++) {
-                    const station = this.pollingStations[i];
-                    if (station.coords) {
-                        this.setGeocodeProgress('Polling stations', i + 1, this.pollingStations.length, `${station.code} already mapped`);
-                        continue;
-                    }
-                    station.coords = await this.geocodeAddress(station.address);
-                    this.setGeocodeProgress('Polling stations', i + 1, this.pollingStations.length, `${station.code} ${this.lastGeocodeUsedNetwork ? 'looked up' : 'loaded from cache'}`);
-                    if (this.lastGeocodeUsedNetwork) {
-                        this.drawMapLayers({ fit: false });
-                        if (i < this.pollingStations.length - 1) await this.sleep(1100);
-                    }
-                }
+            geocodeStations() {
+                return this.geocodeEach('Polling stations', this.pollingStations, station => !station.coords && station.address, (station, point) => { station.coords = point; }, 1);
             },
 
-            async geocodeRecords() {
-                for (let i = 0; i < this.allData.length; i++) {
-                    const row = this.allData[i];
-                    if (row._coords) {
-                        this.setGeocodeProgress('Canvass records', i + 1, this.allData.length, 'Already mapped');
-                        continue;
-                    }
-                    const query = this.buildAddressQuery(row);
-                    row._coords = await this.geocodeAddress(query);
-                    this.setGeocodeProgress('Canvass records', i + 1, this.allData.length, this.lastGeocodeUsedNetwork ? query : 'Loaded from cache');
-                    if (this.lastGeocodeUsedNetwork) {
-                        if (i % 8 === 0) this.drawMapLayers({ fit: false });
-                        if (i < this.allData.length - 1) await this.sleep(1100);
-                    }
-                }
+            geocodeRecords() {
+                return this.geocodeEach('Canvass records', this.allData, row => !row._coords && this.buildAddressQuery(row), (row, point) => { row._coords = point; }, 8);
             },
 
-            async geocodeImported() {
-                for (let i = 0; i < this.importedTargets.length; i++) {
-                    const row = this.importedTargets[i];
-                    if (row.coords && !row._coords) row._coords = row.coords;
-                    if (row._coords || !row.addressQuery) {
-                        this.setGeocodeProgress('Imported addresses', i + 1, this.importedTargets.length, row._coords ? 'Already mapped' : 'Skipped missing address');
-                        continue;
-                    }
-                    row._coords = await this.geocodeAddress(row.addressQuery);
-                    row.coords = row._coords || row.coords || null;
-                    this.setGeocodeProgress('Imported addresses', i + 1, this.importedTargets.length, this.lastGeocodeUsedNetwork ? row.addressQuery : 'Loaded from cache');
-                    if (this.lastGeocodeUsedNetwork) {
-                        if (i % 5 === 0) this.drawMapLayers({ fit: false });
-                        if (i < this.importedTargets.length - 1) await this.sleep(1100);
+            geocodeImported() {
+                return this.geocodeEach('Imported addresses', this.importedTargets, row => !row._coords && row.addressQuery, (row, point) => { row._coords = row.coords = point; }, 5);
+            },
+
+            // Looks up items that have no coordinates yet, redrawing the map every few new points.
+            async geocodeEach(title, items, queryFor, setPoint, redrawEvery) {
+                for (let i = 0; i < items.length; i++) {
+                    const query = queryFor(items[i]);
+                    if (query) setPoint(items[i], await this.geocodeAddress(query));
+                    this.setGeocodeProgress(title, i + 1, items.length, !query ? 'Already mapped' : this.lastGeocodeUsedNetwork ? query : 'Loaded from cache');
+                    if (query && this.lastGeocodeUsedNetwork) {
+                        if (i % redrawEvery === 0) this.drawMapLayers({ fit: false });
+                        // Nominatim allows one request a second.
+                        if (i < items.length - 1) await this.sleep(1100);
                     }
                 }
             },
@@ -907,28 +851,29 @@
                 });
             },
 
-            makeRecordIcon(row, selected) {
-                const support = this.getSupportColor(row);
-                return L.divIcon({
-                    className: 'record-badge-wrapper',
-                    html: `<div class="record-dot ${selected ? 'selected' : ''}" style="background:${support};"></div>`,
-                    iconSize: [selected ? 22 : 18, selected ? 22 : 18],
-                    iconAnchor: [selected ? 11 : 9, selected ? 11 : 9]
-                });
-            },
-
-            makeAddressGroupIcon(row, selected) {
-                const color = this.getAddressGroupColor(row.source);
-                return L.divIcon({
+            // Adds a selectable dot to the map and returns where it was drawn.
+            addTargetMarker(layer, { coords, key, color, title, address, detail }) {
+                const at = this.getDisplayCoords(coords);
+                const selected = this.isSelected(key);
+                const size = selected ? 22 : 18;
+                const icon = L.divIcon({
                     className: 'record-badge-wrapper',
                     html: `<div class="record-dot ${selected ? 'selected' : ''}" style="background:${color};"></div>`,
-                    iconSize: [selected ? 22 : 18, selected ? 22 : 18],
-                    iconAnchor: [selected ? 11 : 9, selected ? 11 : 9]
+                    iconSize: [size, size],
+                    iconAnchor: [size / 2, size / 2]
                 });
+                const popup = `
+                    <div style="min-width:220px;">
+                        <strong>${this.escapeHtml(title)}</strong><br>
+                        ${this.escapeHtml(address)}<br>
+                        <small>${this.escapeHtml(detail)}</small><br>
+                        <button type="button" style="margin-top:8px;padding:6px 10px;border:none;border-radius:6px;background:${selected ? '#34a853' : '#1a73e8'};color:white;cursor:pointer;" onclick="analytics.toggleSelectedByKey(${this.jsArg(key)})">${selected ? 'Selected' : 'Select for walk'}</button>
+                    </div>`;
+                L.marker([at.lat, at.lng], { icon }).bindPopup(popup).addTo(layer);
+                return [at.lat, at.lng];
             },
 
             drawMapLayers(options = {}) {
-                if (!this.map) return;
                 const shouldFit = options.fit !== false;
                 Object.values(this.mapLayers).forEach(layer => layer.clearLayers());
                 this.displayCoordBuckets = {};
@@ -960,41 +905,26 @@
 
                 if (this.showCanvassResponses) this.allData.forEach(row => {
                     if (!row._coords) return;
-                    const displayCoords = this.getDisplayCoords(row._coords);
-                    const key = this.getRecordKey(row);
-                    const selected = this.isSelected(key);
-                    const popupHtml = `
-                        <div style="min-width:220px;">
-                            <strong>${this.escapeHtml(this.formatRecordLabel(row))}</strong><br>
-                            ${this.escapeHtml(this.buildAddressQuery(row))}<br>
-                            <small>${this.escapeHtml(row.routeArea || 'Unassigned')} • ${this.escapeHtml(this.normalizeSupportLevel(row))}</small><br>
-                            <button type="button" style="margin-top:8px;padding:6px 10px;border:none;border-radius:6px;background:${selected ? '#34a853' : '#1a73e8'};color:white;cursor:pointer;" onclick="analytics.toggleSelectedByKey(${this.jsArg(key)})">${selected ? 'Selected' : 'Select for walk'}</button>
-                        </div>`;
-
-                    L.marker([displayCoords.lat, displayCoords.lng], {
-                        icon: this.makeRecordIcon(row, selected)
-                    }).bindPopup(popupHtml).addTo(this.mapLayers.records);
-                    bounds.push([displayCoords.lat, displayCoords.lng]);
+                    bounds.push(this.addTargetMarker(this.mapLayers.records, {
+                        coords: row._coords,
+                        key: this.getRecordKey(row),
+                        color: this.getSupportColor(row),
+                        title: this.formatRecordLabel(row),
+                        address: this.buildAddressQuery(row),
+                        detail: `${row.routeArea || 'Unassigned'} • ${this.normalizeSupportLevel(row)}`
+                    }));
                 });
 
                 this.importedTargets.forEach(row => {
                     if (!row._coords) return;
-                    const displayCoords = this.getDisplayCoords(row._coords);
-                    const key = row.key;
-                    const selected = this.isSelected(key);
-                    const popupHtml = `
-                        <div style="min-width:220px;">
-                            <strong>${this.escapeHtml(row.label)}</strong><br>
-                            ${this.escapeHtml(row.addressQuery)}<br>
-                            <small>${this.escapeHtml(row.source || 'Imported')}</small><br>
-                            <button type="button" style="margin-top:8px;padding:6px 10px;border:none;border-radius:6px;background:${selected ? '#34a853' : '#1a73e8'};color:white;cursor:pointer;" onclick="analytics.toggleSelectedByKey(${this.jsArg(key)})">${selected ? 'Selected' : 'Select for walk'}</button>
-                        </div>`;
-
-                    const marker = L.marker([displayCoords.lat, displayCoords.lng], {
-                        icon: this.makeAddressGroupIcon(row, selected)
-                    }).bindPopup(popupHtml);
-                    marker.addTo(this.mapLayers.imported);
-                    bounds.push([displayCoords.lat, displayCoords.lng]);
+                    bounds.push(this.addTargetMarker(this.mapLayers.imported, {
+                        coords: row._coords,
+                        key: row.key,
+                        color: this.getAddressGroupColor(row.source),
+                        title: row.label,
+                        address: row.addressQuery,
+                        detail: row.source || 'Imported'
+                    }));
                 });
 
                 this.renderLegend();
@@ -1042,7 +972,6 @@
 
             renderLegend() {
                 const container = document.getElementById('stationLegend');
-                if (!container) return;
                 container.innerHTML = this.pollingStations.map(station => {
                     const isVisible = this.stationVisibility[station.code];
                     const isAdvance = station.kind === 'advance';
@@ -1059,8 +988,6 @@
 
             renderSelectedList() {
                 const container = document.getElementById('selectedMarkerList');
-                if (!container) return;
-
                 if (this.selectedTargets.length === 0) {
                     container.innerHTML = '<small>No selected targets yet. Pick records or imported addresses from the map.</small>';
                     this.saveCache('selectedTargets', this.selectedTargets);
@@ -1128,7 +1055,6 @@
             },
 
             fitMap() {
-                if (!this.map) return;
                 const group = [];
                 this.pollingStations.forEach(station => station.coords && this.stationVisibility[station.code] && group.push([station.coords.lat, station.coords.lng]));
                 this.allData.forEach(row => row._coords && group.push([row._coords.lat, row._coords.lng]));
@@ -1144,36 +1070,25 @@
                 return `${row.streetAddress || ''}${row.unitNumber ? ' Unit ' + row.unitNumber : ''}`.trim();
             },
 
-            normalizeSupportLevel(rowOrSupport) {
-                const row = typeof rowOrSupport === 'object' ? rowOrSupport : null;
-                const support = String(row ? row.supportLevel || '' : rowOrSupport || '').trim();
-                const lowered = support.toLowerCase();
+            fullName(row) {
+                return [row.firstName, row.lastName].filter(Boolean).join(' ');
+            },
 
-                if (support === 'Not a Supporter' || lowered.includes('opponent')) return 'Not a Supporter';
-                if (support === 'Supporter' || lowered.includes('supporter')) return 'Supporter';
-                if (support === 'Undecided') return 'Undecided';
-                if (support === "Not Voting/Can't Vote") return "Not Voting/Can't Vote";
-                if (support === 'Not Home/No Answer') return 'Not Home/No Answer';
-                return support || 'Unknown';
+            normalizeSupportLevel(rowOrSupport) {
+                const support = typeof rowOrSupport === 'object' ? rowOrSupport.supportLevel : rowOrSupport;
+                return String(support || '').trim() || 'Unknown';
+            },
+
+            outcomeStyle(support) {
+                return OUTCOME_STYLES.get(this.normalizeSupportLevel(support)) || { badge: 'gray', color: '#64748b' };
             },
 
             getSupportBadge(support) {
-                const normalized = this.normalizeSupportLevel(support);
-                if (normalized === 'Supporter') return 'green';
-                if (normalized === 'Undecided') return 'yellow';
-                if (normalized === 'Not a Supporter') return 'red';
-                if (normalized === 'Not Home/No Answer') return 'dark';
-                return 'gray';
+                return this.outcomeStyle(support).badge;
             },
 
             getSupportColor(support) {
-                const normalized = this.normalizeSupportLevel(support);
-                if (normalized === 'Supporter') return '#16a34a';
-                if (normalized === 'Undecided') return '#eab308';
-                if (normalized === 'Not a Supporter') return '#dc2626';
-                if (normalized === 'Not Home/No Answer') return '#111827';
-                if (normalized === "Not Voting/Can't Vote") return '#9ca3af';
-                return '#64748b';
+                return this.outcomeStyle(support).color;
             },
 
             updateOverview() {
@@ -1245,7 +1160,6 @@
 
             async loadSavedRoutes() {
                 const tbody = document.getElementById('route-table-body');
-                if (!tbody) return;
                 try {
                     this.savedRoutes = await this.api({ action: 'getSavedRoutes' });
                     this.renderSavedRoutes();
@@ -1257,7 +1171,6 @@
 
             renderSavedRoutes() {
                 const tbody = document.getElementById('route-table-body');
-                if (!tbody) return;
                 if (this.savedRoutes.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="5">No saved routes yet. Select targets on the map and save a walking list.</td></tr>';
                     return;
@@ -1298,7 +1211,7 @@
                         item.postalCode || '',
                         item.coords ? item.coords.lat : '',
                         item.coords ? item.coords.lng : '',
-                        [item.firstName, item.lastName].filter(Boolean).join(' ') || item.label || '',
+                        this.fullName(item) || item.label || '',
                         item.phone || '',
                         item.email || '',
                         item.source || '',
@@ -1335,13 +1248,13 @@
             },
 
             updateFollowups() {
-                const followups = this.allData.filter(r => r.followUpNeeded === 'Yes');
                 const tbody = document.getElementById('followup-table-body');
                 tbody.innerHTML = '';
-                followups.forEach(row => {
+                this.getFollowupRows().forEach(row => {
                     const tr = document.createElement('tr');
-                    const name = [row.firstName, row.lastName].filter(Boolean).join(' ') || '—';
+                    const name = this.fullName(row) || '—';
                     const contact = [row.phone, row.email].filter(Boolean).join(' / ') || '—';
+                    const notes = String(row.notes || '');
                     const support = this.normalizeSupportLevel(row);
                     tr.innerHTML = `
                         <td>${this.escapeHtml(this.formatRecordLabel(row))}</td>
@@ -1349,7 +1262,7 @@
                         <td>${this.escapeHtml(contact)}</td>
                         <td><span class="badge ${this.getSupportBadge(support)}">${this.escapeHtml(support)}</span></td>
                         <td>${this.escapeHtml(row.lawnSign || '—')}</td>
-                        <td>${this.escapeHtml(row.notes ? row.notes.substring(0, 50) + (row.notes.length > 50 ? '...' : '') : '—')}</td>
+                        <td>${this.escapeHtml(notes ? notes.substring(0, 50) + (notes.length > 50 ? '...' : '') : '—')}</td>
                     `;
                     tbody.appendChild(tr);
                 });
@@ -1362,17 +1275,6 @@
                 });
             },
 
-            ensureFollowupExportButton() {
-                const search = document.getElementById('followup-search');
-                if (!search || document.getElementById('followupExportBtn')) return;
-                const button = document.createElement('button');
-                button.id = 'followupExportBtn';
-                button.type = 'button';
-                button.textContent = 'Export CSV';
-                button.onclick = () => this.exportFollowupsCSV();
-                search.parentElement.appendChild(button);
-            },
-
             getFollowupRows() {
                 return this.allData.filter(row => row.followUpNeeded === 'Yes');
             },
@@ -1383,15 +1285,12 @@
 
             updateLawnSigns() {
                 const tbody = document.getElementById('lawn-sign-table-body');
-                if (!tbody) return;
                 tbody.innerHTML = '';
                 this.getLawnSignRows().forEach(row => {
                     const tr = document.createElement('tr');
-                    const address = `${row.streetAddress || ''}${row.unitNumber ? ' Unit ' + row.unitNumber : ''}`.trim();
-                    const name = [row.firstName, row.lastName].filter(Boolean).join(' ') || '—';
                     tr.innerHTML = `
-                        <td>${this.escapeHtml(address)}</td>
-                        <td>${this.escapeHtml(name)}</td>
+                        <td>${this.escapeHtml(this.formatRecordLabel(row))}</td>
+                        <td>${this.escapeHtml(this.fullName(row) || '—')}</td>
                         <td>${this.escapeHtml(row.phone || '')}</td>
                         <td>${this.escapeHtml(row.email || '')}</td>
                         <td>${this.escapeHtml(row.notes || '')}</td>
@@ -1401,7 +1300,7 @@
             },
 
             filterLawnSigns() {
-                const query = (document.getElementById('lawn-sign-search')?.value || '').toLowerCase();
+                const query = document.getElementById('lawn-sign-search').value.toLowerCase();
                 Array.from(document.getElementById('lawn-sign-table-body').rows).forEach(row => {
                     row.style.display = row.textContent.toLowerCase().includes(query) ? '' : 'none';
                 });
@@ -1411,8 +1310,8 @@
                 const rows = [['Address', 'Name', 'Phone', 'Email', 'Support Level', 'Lawn Sign', 'Notes']];
                 this.getFollowupRows().forEach(row => {
                     rows.push([
-                        `${row.streetAddress || ''}${row.unitNumber ? ' Unit ' + row.unitNumber : ''}`.trim(),
-                        [row.firstName, row.lastName].filter(Boolean).join(' '),
+                        this.formatRecordLabel(row),
+                        this.fullName(row),
                         row.phone || '',
                         row.email || '',
                         this.normalizeSupportLevel(row),
@@ -1427,8 +1326,8 @@
                 const rows = [['Address', 'Name', 'Phone', 'Email', 'Notes']];
                 this.getLawnSignRows().forEach(row => {
                     rows.push([
-                        `${row.streetAddress || ''}${row.unitNumber ? ' Unit ' + row.unitNumber : ''}`.trim(),
-                        [row.firstName, row.lastName].filter(Boolean).join(' '),
+                        this.formatRecordLabel(row),
+                        this.fullName(row),
                         row.phone || '',
                         row.email || '',
                         row.notes || ''
