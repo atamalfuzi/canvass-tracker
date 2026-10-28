@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvass Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .container { max-width: 720px; }
+        main p { line-height: 1.55; margin-bottom: 1rem; color: #333; }
+        .pages { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.5rem 0; }
+        .pages a { display: block; padding: 1.2rem; border: 1px solid #dbe2ea; border-radius: 8px; text-decoration: none; color: #202124; }
+        .pages a:hover { border-color: #1a73e8; }
+        .pages strong { display: block; color: #1a73e8; margin-bottom: 0.3rem; }
+        .pages span { font-size: 0.9rem; color: #555; }
+        button { padding: 0.5rem 0.9rem; border: 1px solid #d1d5db; background: #fff; border-radius: 6px; cursor: pointer; }
+        @media (max-width: 600px) { .pages { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Canvass Tracker</h1>
+            <p>Door-knocking tools for a 2026 municipal campaign in Coquitlam, BC</p>
+        </header>
+
+        <main>
+            <p>Volunteers record each door on their phone. The campaign team sees the results on a map next to the polling stations, plans walking routes, and follows up with undecided voters and lawn-sign requests. The real version stores everything in a Google Sheet through a small Apps Script backend.</p>
+            <p>This copy runs on made-up data in your browser. Nothing you enter leaves it.</p>
+
+            <div class="pages">
+                <a href="door-knocker.html"><strong>Door knocker</strong><span>The form volunteers fill in at each door.</span></a>
+                <a href="dashboard.html"><strong>Dashboard</strong><span>Totals, the map, walking routes, follow-ups and lawn signs.</span></a>
+            </div>
+
+            <p><button type="button" id="reset">Reset the demo data</button> <span id="reset-status"></span></p>
+        </main>
+
+        <footer>Code and setup notes on <a href="https://github.com/atamalfuzi/canvass-tracker">GitHub</a>.</footer>
+    </div>
+
+    <script src="shared.js"></script>
+    <script>
+        document.getElementById('reset').addEventListener('click', () => {
+            demo.reset();
+            document.getElementById('reset-status').textContent = 'Done. The demo is back to its starting data.';
+        });
+    </script>
+</body>
+</html>

@@ -3,21 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Campaign Analytics</title>
+    <title>Campaign Dashboard</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
+    <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; padding: 1rem; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        header { background: white; padding: 1.5rem; border-radius: 12px 12px 0 0; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
-        header h1 { font-size: 1.6rem; color: #1a73e8; margin-bottom: 0.3rem; }
-        header p { font-size: 0.9rem; color: #666; }
-        .config-section { background: white; padding: 1rem; border-top: 1px solid #eee; display: flex; gap: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
-        .status { padding: 0.6rem 1rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; background: #f3f3f3; color: #666; }
-        .status.connected { background: #d4edda; color: #155724; }
-        .content { background: white; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
         .tabs { display: flex; gap: 0; border-bottom: 2px solid #eee; margin-bottom: 1.5rem; }
         .tab-btn { padding: 0.8rem 1.5rem; border: none; background: none; cursor: pointer; font-size: 1rem; font-weight: 500; color: #999; position: relative; }
         .tab-btn:hover { color: #666; }
@@ -96,7 +87,6 @@
         .filter-box { margin-bottom: 1.5rem; display: flex; gap: 0.5rem; }
         .filter-box input { flex: 1; padding: 0.6rem; border: 1px solid #dadce0; border-radius: 4px; }
         .filter-box button { padding: 0.6rem 1.2rem; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; }
-        footer { background: white; padding: 1rem; text-align: center; font-size: 0.8rem; color: #999; margin-top: 1rem; border-radius: 0 0 12px 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
         @media (max-width: 768px) {
             .tabs { flex-wrap: wrap; }
             .tab-btn { padding: 0.6rem 1rem; font-size: 0.9rem; }
@@ -112,34 +102,32 @@
 <body>
     <div class="container">
         <header>
-            <h1>📊 Campaign Analytics</h1>
-            <p>Coquitlam Canvassing Dashboard</p>
+            <h1>Campaign Dashboard</h1>
+            <p>Coquitlam canvassing</p>
         </header>
 
-        <div class="config-section">
-            <div style="flex:1"></div>
-            <div id="connection-status" class="status">Disconnected</div>
+        <div class="status-bar">
+            <div id="connection-status" class="status">Loading...</div>
         </div>
 
-        <div class="content">
+        <main>
             <div class="tabs">
                 <button class="tab-btn active" onclick="analytics.switchTab('overview', this)">Overview</button>
                 <button class="tab-btn" onclick="analytics.switchTab('map', this)">Map</button>
                 <button class="tab-btn" onclick="analytics.switchTab('routes', this)">Routes</button>
                 <button class="tab-btn" onclick="analytics.switchTab('followup', this)">Follow-ups</button>
-                <button class="tab-btn" onclick="analytics.switchTab('lawnsigns', this)">Lawn Signs</button>
+                <button class="tab-btn" onclick="analytics.switchTab('lawnsigns', this)">Lawn signs</button>
             </div>
 
-            <!-- Overview Tab -->
             <div id="overview" class="tab-content active">
                 <div class="stats-grid" id="stats-grid">
                     <div class="stat-box">
                         <div class="stat-number" id="total-doors">0</div>
-                        <div class="stat-label">Total Doors Knocked</div>
+                        <div class="stat-label">Doors knocked</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-number" id="answered">0</div>
-                        <div class="stat-label">Follow-ups Needed</div>
+                        <div class="stat-number" id="followups">0</div>
+                        <div class="stat-label">Follow-ups needed</div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-number" id="supporters">0</div>
@@ -240,13 +228,12 @@
                 </div>
             </div>
 
-            <!-- Routes Tab -->
             <div id="routes" class="tab-content">
                 <table class="route-table">
                     <thead>
                         <tr>
                             <th>Route</th>
-                            <th>Assigned To</th>
+                            <th>Assigned to</th>
                             <th>Date</th>
                             <th>Stops</th>
                             <th>Actions</th>
@@ -257,7 +244,6 @@
                 </table>
             </div>
 
-            <!-- Follow-ups Tab -->
             <div id="followup" class="tab-content">
                 <div class="filter-box">
                     <input type="text" id="followup-search" placeholder="Search address..." onkeyup="analytics.filterFollowups()">
@@ -270,7 +256,7 @@
                             <th>Name</th>
                             <th>Phone / Email</th>
                             <th>Support</th>
-                            <th>Lawn Sign</th>
+                            <th>Lawn sign</th>
                             <th>Notes</th>
                         </tr>
                     </thead>
@@ -298,18 +284,13 @@
                     <tbody id="lawn-sign-table-body"></tbody>
                 </table>
             </div>
-        </div>
+        </main>
 
-        <footer>
-            Data updates automatically • Last refresh shown above
-        </footer>
+        <footer id="footer">Data comes from the campaign's Google Sheet when the page loads. Reload to see new responses.</footer>
     </div>
 
+    <script src="shared.js"></script>
     <script>
-        // Paste the Apps Script web app URL (ends in /exec) into the copy you use. Don't commit it.
-        const DEFAULT_WEBAPP_URL = '';
-        // Open the dashboard as analysis.html#key=... with the ADMIN_KEY script property.
-        const ADMIN_KEY = new URLSearchParams(location.hash.slice(1)).get('key') || '';
         const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&bounded=1&viewbox=-123.5,49.0,-122.2,49.5&q=';
         const DEFAULT_CENTER = [49.2806, -122.7896];
         const ADDRESS_GROUP_COLORS = [
@@ -319,51 +300,13 @@
             '#a21caf', '#047857', '#b45309', '#1d4ed8', '#475569'
         ];
 
-        const OUTCOME_STYLES = new Map([
-            ['Supporter', { badge: 'green', color: '#16a34a' }],
-            ['Undecided', { badge: 'yellow', color: '#eab308' }],
-            ['Not a Supporter', { badge: 'red', color: '#dc2626' }],
-            ['Not Home/No Answer', { badge: 'dark', color: '#111827' }],
-            ["Not Voting/Can't Vote", { badge: 'gray', color: '#9ca3af' }]
-        ]);
-
-        const POLLING_STATIONS = [
-            { code: 'AD1', name: 'Centennial Adv.', address: '620 Poirier St, Coquitlam, BC', kind: 'advance' },
-            { code: 'AD2', name: 'Innovation Adv.', address: '1207 Pinetree Way, Coquitlam, BC', kind: 'advance' },
-            { code: '1', name: 'Hillcrest', address: '2161 Regan Ave, Coquitlam, BC', kind: 'regular' },
-            { code: '2', name: 'Mundy Road', address: '2200 Austin Ave, Coquitlam, BC', kind: 'regular' },
-            { code: '3', name: 'Innovation', address: '1207 Pinetree Way, Coquitlam, BC', kind: 'regular' },
-            { code: '4', name: 'Glen', address: '3064 Glen Dr, Coquitlam, BC', kind: 'regular' },
-            { code: '5', name: 'Bramblewood', address: '2875 Panorama Dr, Coquitlam, BC', kind: 'regular' },
-            { code: '6', name: 'Mountain View', address: '740 Smith Ave, Coquitlam, BC', kind: 'regular' },
-            { code: '7', name: 'Smiling Creek', address: '3456 Princeton Ave, Coquitlam, BC', kind: 'regular' },
-            { code: '8', name: 'Como Lake Middle', address: '1121 King Albert Ave, Coquitlam, BC', kind: 'regular' },
-            { code: '9', name: 'Eagle Ridge Elementary', address: '1215 Falcon Dr, Coquitlam, BC', kind: 'regular' },
-            { code: '10', name: 'Alderson', address: '825 Gauthier Ave, Coquitlam, BC', kind: 'regular' },
-            { code: '11', name: 'Panorama', address: '1455 Johnson St, Coquitlam, BC', kind: 'regular' },
-            { code: '12', name: 'Nestor', address: '1266 Nestor St, Coquitlam, BC', kind: 'regular' },
-            { code: '13', name: 'Cape Horn', address: '155 Finnigan St, Coquitlam, BC', kind: 'regular' },
-            { code: '14', name: 'Walton', address: '2960 Walton Ave, Coquitlam, BC', kind: 'regular' },
-            { code: '15', name: 'Ranch Park', address: '2701 Spuraway Ave, Coquitlam, BC', kind: 'regular' },
-            { code: '16', name: 'Lord Baden', address: '450 Joyce St, Coquitlam, BC', kind: 'regular' },
-            { code: '17', name: 'Porter Street', address: '728 Porter St, Coquitlam, BC', kind: 'regular' },
-            { code: '18', name: 'Riverview', address: '700 Clearwater Way, Coquitlam, BC', kind: 'regular' },
-            { code: '19', name: 'Victoria Hall', address: '3435 Victoria Dr, Coquitlam, BC', kind: 'regular' },
-            { code: '20', name: 'Miller Park', address: '800 Egmont Ave, Coquitlam, BC', kind: 'regular' },
-            { code: '21', name: 'Harbourview', address: '960 Lillian St, Coquitlam, BC', kind: 'regular' },
-            { code: '22', name: 'Meadowbrook', address: '900 Sharpe St, Coquitlam, BC', kind: 'regular' },
-            { code: '23', name: 'Montgomery', address: '1900 Edgewood Ave, Coquitlam, BC', kind: 'regular' },
-            { code: 'N/A', name: 'Victoria Adv.', address: '800 Egmont Ave, Coquitlam, BC', kind: 'advance' }
-        ];
-
         const analytics = {
-            apiUrl: DEFAULT_WEBAPP_URL,
             allData: [],
             charts: {},
             map: null,
             mapLayers: {},
             displayCoordBuckets: {},
-            pollingStations: POLLING_STATIONS.map(station => ({ ...station, coords: null })),
+            pollingStations: POLLING_STATIONS.map(station => ({ ...station, coords: { lat: station.lat, lng: station.lng } })),
             selectedTargets: [],
             importedTargets: [],
             addressGroups: [],
@@ -404,14 +347,6 @@
                 localStorage.setItem(key, JSON.stringify(value));
             },
 
-            async api(params, post = false) {
-                const body = new URLSearchParams({ ...params, key: ADMIN_KEY });
-                const response = post ? await fetch(this.apiUrl, { method: 'POST', body }) : await fetch(`${this.apiUrl}?${body}`);
-                const payload = await response.json();
-                if (!payload.success) throw new Error(payload.error || 'Request failed.');
-                return payload.data;
-            },
-
             initializeStationVisibility() {
                 let changed = false;
                 this.pollingStations.forEach(station => {
@@ -432,14 +367,15 @@
             async loadData() {
                 const status = document.getElementById('connection-status');
                 try {
-                    this.allData = await this.api({ action: 'getAllData' });
+                    this.allData = await api({ action: 'getAllData' });
                     this.applyStoredCoordinates();
                     this.updateOverview();
                     await this.loadSavedRoutes();
                     this.updateFollowups();
                     this.updateLawnSigns();
-                    status.textContent = '✓ Connected';
+                    status.textContent = DEMO ? 'Demo data' : 'Connected';
                     status.className = 'status connected';
+                    if (DEMO) document.getElementById('footer').textContent = 'Demo: made-up data, stored in this browser only.';
                     await this.refreshAddressGroups(false);
                     await this.refreshMap();
                 } catch (error) {
@@ -466,7 +402,14 @@
             },
 
             invalidateMap() {
-                setTimeout(() => this.map.invalidateSize(), 80);
+                setTimeout(() => {
+                    this.map.invalidateSize();
+                    // The first fit happens while the Map tab is hidden and has no size, so fit again once it shows.
+                    if (!this.mapFitted && this.map.getSize().x > 0) {
+                        this.fitMap();
+                        this.mapFitted = true;
+                    }
+                }, 80);
             },
 
             async refreshMap() {
@@ -478,15 +421,13 @@
                 refreshBtn.disabled = true;
 
                 try {
-                    this.setGeocodeProgress('Polling stations', 0, this.pollingStations.length, 'Checking station coordinate cache');
-                    await this.geocodeStations();
                     this.setGeocodeProgress('Canvass records', 0, this.allData.length, 'Checking canvass address cache');
                     await this.geocodeRecords();
                     this.setGeocodeProgress('Imported addresses', 0, this.importedTargets.length, 'Checking imported address cache');
                     await this.geocodeImported();
                     this.setGeocodeProgress('Rendering map', 1, 1, 'Drawing visible stations and targets');
                     this.drawMapLayers({ fit: true });
-                    this.setGeocodeProgress('Map loaded', 1, 1, 'Cached addresses will load instantly next time');
+                    this.setGeocodeProgress('Map loaded', 1, 1);
                     progressEl.classList.add('done');
                     setTimeout(() => { progressEl.style.display = 'none'; }, 1500);
                 } catch (error) {
@@ -541,7 +482,7 @@
             async refreshAddressGroups(redraw = true) {
                 this.setAddressGroupStatus('Loading Sheet tabs...', true);
                 try {
-                    this.addressGroups = await this.api({ action: 'getAddressGroups' });
+                    this.addressGroups = await api({ action: 'getAddressGroups' });
                     const availableNames = new Set(this.addressGroups.map(group => group.name));
                     this.selectedAddressGroups = this.selectedAddressGroups.filter(name => availableNames.has(name));
                     this.saveCache('selectedAddressGroups', this.selectedAddressGroups);
@@ -596,7 +537,7 @@
 
                 this.setRouteSaveStatus('Saving route...', true);
                 try {
-                    await this.api({ action: 'saveRoute', routeName, assignedTo, routeDate, targetsJson: JSON.stringify(this.selectedTargets) }, true);
+                    await api({ action: 'saveRoute', routeName, assignedTo, routeDate, targetsJson: JSON.stringify(this.selectedTargets) }, true);
                     await this.loadSavedRoutes();
                     this.setRouteSaveStatus(`Saved ${routeName} with ${this.selectedTargets.length} stops.`, true);
                     document.getElementById('routeNameInput').value = '';
@@ -624,7 +565,7 @@
                     let updated = 0;
                     let failed = 0;
                     for (const name of this.selectedAddressGroups) {
-                        const result = await this.api({ action: 'geocodeAddressGroup', limit: 100, sheet: name });
+                        const result = await api({ action: 'geocodeAddressGroup', limit: 100, sheet: name });
                         updated += result.updated || 0;
                         failed += result.failed || 0;
                     }
@@ -638,7 +579,7 @@
 
             async loadSelectedAddressGroups() {
                 const responses = await Promise.all(this.selectedAddressGroups.map(async name => {
-                    const rows = await this.api({ action: 'getAddressGroup', sheet: name });
+                    const rows = await api({ action: 'getAddressGroup', sheet: name });
                     return rows.map(row => this.mapAddressGroupRow(name, row));
                 }));
                 this.importedTargets = responses.flat();
@@ -704,10 +645,10 @@
                     const color = this.getAddressGroupColor(group.name);
                     return `
                         <label class="legend-row ${checked ? '' : 'off'}">
-                            <input type="checkbox" ${checked ? 'checked' : ''} onchange="analytics.toggleAddressGroup(${this.jsArg(group.name)})">
+                            <input type="checkbox" ${checked ? 'checked' : ''} onchange="analytics.toggleAddressGroup(${jsArg(group.name)})">
                             <span class="swatch" style="background:${color};"></span>
-                            <input type="color" value="${color}" onchange="analytics.setAddressGroupColor(${this.jsArg(group.name)}, this.value)" onclick="event.stopPropagation()" aria-label="Choose color for ${this.escapeHtml(group.name)}">
-                            <span style="flex:1;"><strong>${this.escapeHtml(group.name)}</strong><br><small>${group.rowCount} rows</small></span>
+                            <input type="color" value="${color}" onchange="analytics.setAddressGroupColor(${jsArg(group.name)}, this.value)" onclick="event.stopPropagation()" aria-label="Choose color for ${escapeHtml(group.name)}">
+                            <span style="flex:1;"><strong>${escapeHtml(group.name)}</strong><br><small>${group.rowCount} rows</small></span>
                         </label>
                     `;
                 }).join('');
@@ -726,10 +667,6 @@
                 document.getElementById('geocodeProgressCount').textContent = total > 0 ? `${done}/${total}` : 'Done';
                 document.getElementById('geocodeProgressFill').style.width = `${percent}%`;
                 document.getElementById('geocodeProgressDetail').textContent = detail;
-            },
-
-            geocodeStations() {
-                return this.geocodeEach('Polling stations', this.pollingStations, station => !station.coords && station.address, (station, point) => { station.coords = point; }, 1);
             },
 
             geocodeRecords() {
@@ -757,10 +694,12 @@
             async geocodeAddress(query) {
                 const cleaned = (query || '').trim();
                 this.lastGeocodeUsedNetwork = false;
-                if (!cleaned) return null;
+                // The demo has no geocoder. Its data comes with coordinates.
+                if (!cleaned || DEMO) return null;
 
+                // The google-v1 prefix retired an older cache that held Nominatim-only results.
                 const cacheKey = `google-v1:${cleaned.toLowerCase()}`;
-                if (Object.prototype.hasOwnProperty.call(this.geocodeCache, cacheKey)) {
+                if (cacheKey in this.geocodeCache) {
                     return this.geocodeCache[cacheKey];
                 }
 
@@ -797,7 +736,7 @@
 
             async geocodeAddressWithBackend(query) {
                 try {
-                    const point = await this.api({ action: 'geocodeAddress', q: query });
+                    const point = await api({ action: 'geocodeAddress', q: query });
                     return { lat: parseFloat(point.lat), lng: parseFloat(point.lng) };
                 } catch (error) {
                     console.warn('Backend geocode failed for', query, error);
@@ -826,6 +765,7 @@
                 return { lat, lng };
             },
 
+            // Spreads out dots that share a point, such as units in one building: rings of eight, 7 m apart.
             getDisplayCoords(point) {
                 if (!point) return null;
                 const key = `${Number(point.lat).toFixed(6)},${Number(point.lng).toFixed(6)}`;
@@ -837,6 +777,7 @@
                 const slot = (index - 1) % 8;
                 const angle = (Math.PI * 2 * slot) / 8;
                 const meters = 7 * ring;
+                // A degree of latitude is about 111,320 m; a degree of longitude shrinks with cos(latitude).
                 const latOffset = (Math.sin(angle) * meters) / 111320;
                 const lngOffset = (Math.cos(angle) * meters) / (111320 * Math.cos(point.lat * Math.PI / 180));
                 return { lat: point.lat + latOffset, lng: point.lng + lngOffset };
@@ -845,7 +786,7 @@
             makeStationIcon(station) {
                 return L.divIcon({
                     className: 'station-badge-wrapper',
-                    html: `<div class="station-icon ${station.kind === 'advance' ? 'advance' : 'regular'}">${this.escapeHtml(station.code)}</div>`,
+                    html: `<div class="station-icon ${station.kind === 'advance' ? 'advance' : 'regular'}">${escapeHtml(station.code)}</div>`,
                     iconSize: [30, 30],
                     iconAnchor: [15, 15]
                 });
@@ -864,10 +805,10 @@
                 });
                 const popup = `
                     <div style="min-width:220px;">
-                        <strong>${this.escapeHtml(title)}</strong><br>
-                        ${this.escapeHtml(address)}<br>
-                        <small>${this.escapeHtml(detail)}</small><br>
-                        <button type="button" style="margin-top:8px;padding:6px 10px;border:none;border-radius:6px;background:${selected ? '#34a853' : '#1a73e8'};color:white;cursor:pointer;" onclick="analytics.toggleSelectedByKey(${this.jsArg(key)})">${selected ? 'Selected' : 'Select for walk'}</button>
+                        <strong>${escapeHtml(title)}</strong><br>
+                        ${escapeHtml(address)}<br>
+                        <small>${escapeHtml(detail)}</small><br>
+                        <button type="button" style="margin-top:8px;padding:6px 10px;border:none;border-radius:6px;background:${selected ? '#34a853' : '#1a73e8'};color:white;cursor:pointer;" onclick="analytics.toggleSelectedByKey(${jsArg(key)})">${selected ? 'Selected' : 'Select for walk'}</button>
                     </div>`;
                 L.marker([at.lat, at.lng], { icon }).bindPopup(popup).addTo(layer);
                 return [at.lat, at.lng];
@@ -886,7 +827,7 @@
                     
                     L.marker([station.coords.lat, station.coords.lng], {
                         icon: this.makeStationIcon(station)
-                    }).bindPopup(`<strong>${this.escapeHtml(station.code)} ${this.escapeHtml(station.name)}</strong><br>${this.escapeHtml(station.address)}`).addTo(this.mapLayers.stations);
+                    }).bindPopup(`<strong>${escapeHtml(station.code)} ${escapeHtml(station.name)}</strong><br>${escapeHtml(station.address)}`).addTo(this.mapLayers.stations);
 
                     const zoneRadius = isAdvance ? 430 : 390;
                     const zoneColor = isAdvance ? '#fca5a5' : '#60a5fa';
@@ -977,9 +918,9 @@
                     const isAdvance = station.kind === 'advance';
                     return `
                         <div class="legend-row ${isVisible ? '' : 'off'}">
-                            <input type="checkbox" ${isVisible ? 'checked' : ''} onchange="analytics.toggleStationVisibility('${this.escapeHtml(station.code)}')" aria-label="Toggle ${this.escapeHtml(station.code)} visibility">
+                            <input type="checkbox" ${isVisible ? 'checked' : ''} onchange="analytics.toggleStationVisibility('${escapeHtml(station.code)}')" aria-label="Toggle ${escapeHtml(station.code)} visibility">
                             <span class="swatch ${isAdvance ? 'advance' : 'station'}"></span>
-                            <span style="flex:1;"><strong>${this.escapeHtml(station.code)}</strong> ${this.escapeHtml(station.name)}<br><small>${this.escapeHtml(station.address)}</small></span>
+                            <span style="flex:1;"><strong>${escapeHtml(station.code)}</strong> ${escapeHtml(station.name)}<br><small>${escapeHtml(station.address)}</small></span>
                         </div>
                     `;
                 }).join('');
@@ -997,12 +938,12 @@
 
                 container.innerHTML = this.selectedTargets.map(item => `
                     <div class="marker-item">
-                        <input type="checkbox" checked data-remove-key="${this.escapeHtml(item.key)}" aria-label="Remove from walking list">
+                        <input type="checkbox" checked data-remove-key="${escapeHtml(item.key)}" aria-label="Remove from walking list">
                         <div class="meta">
-                            <div class="title">${this.escapeHtml(item.label || item.addressQuery || item.key)}</div>
-                            <div class="sub">${this.escapeHtml(item.addressQuery || '')}</div>
-                            <div class="sub">${this.escapeHtml([item.city, item.province, item.postalCode].filter(Boolean).join(' '))}</div>
-                            <div class="sub">${this.escapeHtml(item.supportLevel || item.source || '')}</div>
+                            <div class="title">${escapeHtml(item.label || item.addressQuery || item.key)}</div>
+                            <div class="sub">${escapeHtml(item.addressQuery || '')}</div>
+                            <div class="sub">${escapeHtml([item.city, item.province, item.postalCode].filter(Boolean).join(' '))}</div>
+                            <div class="sub">${escapeHtml(item.supportLevel || item.source || '')}</div>
                         </div>
                     </div>
                 `).join('');
@@ -1080,11 +1021,11 @@
             },
 
             outcomeStyle(support) {
-                return OUTCOME_STYLES.get(this.normalizeSupportLevel(support)) || { badge: 'gray', color: '#64748b' };
+                return OUTCOMES.get(this.normalizeSupportLevel(support)) || { tone: 'gray', color: '#64748b' };
             },
 
             getSupportBadge(support) {
-                return this.outcomeStyle(support).badge;
+                return this.outcomeStyle(support).tone;
             },
 
             getSupportColor(support) {
@@ -1094,7 +1035,7 @@
             updateOverview() {
                 const stats = this.calculateStats();
                 document.getElementById('total-doors').textContent = stats.totalDoors;
-                document.getElementById('answered').textContent = stats.followups;
+                document.getElementById('followups').textContent = stats.followups;
                 document.getElementById('supporters').textContent = stats.supporters;
                 document.getElementById('undecided').textContent = stats.undecided;
 
@@ -1161,7 +1102,7 @@
             async loadSavedRoutes() {
                 const tbody = document.getElementById('route-table-body');
                 try {
-                    this.savedRoutes = await this.api({ action: 'getSavedRoutes' });
+                    this.savedRoutes = await api({ action: 'getSavedRoutes' });
                     this.renderSavedRoutes();
                 } catch (error) {
                     tbody.innerHTML = '<tr><td colspan="5">Could not load saved routes.</td></tr>';
@@ -1177,15 +1118,15 @@
                 }
                 tbody.innerHTML = this.savedRoutes.map(route => `
                     <tr>
-                        <td><strong>${this.escapeHtml(route.routeName)}</strong></td>
-                        <td>${this.escapeHtml(route.assignedTo || 'Unassigned')}</td>
-                        <td>${this.escapeHtml(route.routeDate || 'No date')}</td>
+                        <td><strong>${escapeHtml(route.routeName)}</strong></td>
+                        <td>${escapeHtml(route.assignedTo || 'Unassigned')}</td>
+                        <td>${escapeHtml(route.routeDate || 'No date')}</td>
                         <td>${(route.targets || []).length}</td>
                         <td>
-                            <button class="small-btn compact" type="button" onclick="analytics.exportSavedRouteCSV(${this.jsArg(route.routeId)})">Export CSV</button>
-                            <button class="small-btn compact primary" type="button" onclick="analytics.openSavedRoute(${this.jsArg(route.routeId)})">Open map</button>
-                            <button class="small-btn compact" type="button" onclick="analytics.loadSavedRoute(${this.jsArg(route.routeId)})">Load list</button>
-                            <button class="small-btn compact" type="button" onclick="analytics.deleteSavedRoute(${this.jsArg(route.routeId)})">Delete</button>
+                            <button class="small-btn compact" type="button" onclick="analytics.exportSavedRouteCSV(${jsArg(route.routeId)})">Export CSV</button>
+                            <button class="small-btn compact primary" type="button" onclick="analytics.openSavedRoute(${jsArg(route.routeId)})">Open map</button>
+                            <button class="small-btn compact" type="button" onclick="analytics.loadSavedRoute(${jsArg(route.routeId)})">Load list</button>
+                            <button class="small-btn compact" type="button" onclick="analytics.deleteSavedRoute(${jsArg(route.routeId)})">Delete</button>
                         </td>
                     </tr>
                 `).join('');
@@ -1239,7 +1180,7 @@
             async deleteSavedRoute(routeId) {
                 if (!confirm('Delete this saved route?')) return;
                 try {
-                    await this.api({ action: 'deleteSavedRoute', routeId }, true);
+                    await api({ action: 'deleteSavedRoute', routeId }, true);
                     await this.loadSavedRoutes();
                 } catch (error) {
                     alert(error.message || 'Could not delete route.');
@@ -1257,12 +1198,12 @@
                     const notes = String(row.notes || '');
                     const support = this.normalizeSupportLevel(row);
                     tr.innerHTML = `
-                        <td>${this.escapeHtml(this.formatRecordLabel(row))}</td>
-                        <td>${this.escapeHtml(name)}</td>
-                        <td>${this.escapeHtml(contact)}</td>
-                        <td><span class="badge ${this.getSupportBadge(support)}">${this.escapeHtml(support)}</span></td>
-                        <td>${this.escapeHtml(row.lawnSign || '—')}</td>
-                        <td>${this.escapeHtml(notes ? notes.substring(0, 50) + (notes.length > 50 ? '...' : '') : '—')}</td>
+                        <td>${escapeHtml(this.formatRecordLabel(row))}</td>
+                        <td>${escapeHtml(name)}</td>
+                        <td>${escapeHtml(contact)}</td>
+                        <td><span class="badge ${this.getSupportBadge(support)}">${escapeHtml(support)}</span></td>
+                        <td>${escapeHtml(row.lawnSign || '—')}</td>
+                        <td>${escapeHtml(notes ? notes.substring(0, 50) + (notes.length > 50 ? '...' : '') : '—')}</td>
                     `;
                     tbody.appendChild(tr);
                 });
@@ -1289,11 +1230,11 @@
                 this.getLawnSignRows().forEach(row => {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td>${this.escapeHtml(this.formatRecordLabel(row))}</td>
-                        <td>${this.escapeHtml(this.fullName(row) || '—')}</td>
-                        <td>${this.escapeHtml(row.phone || '')}</td>
-                        <td>${this.escapeHtml(row.email || '')}</td>
-                        <td>${this.escapeHtml(row.notes || '')}</td>
+                        <td>${escapeHtml(this.formatRecordLabel(row))}</td>
+                        <td>${escapeHtml(this.fullName(row) || '—')}</td>
+                        <td>${escapeHtml(row.phone || '')}</td>
+                        <td>${escapeHtml(row.email || '')}</td>
+                        <td>${escapeHtml(row.notes || '')}</td>
                     `;
                     tbody.appendChild(tr);
                 });
@@ -1342,15 +1283,6 @@
                 document.getElementById(tabName).classList.add('active');
                 if (buttonEl) buttonEl.classList.add('active');
                 if (tabName === 'map') this.invalidateMap();
-            },
-
-            escapeHtml(value) {
-                return String(value || '').replace(/[&<>"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]));
-            },
-
-            // A string argument for an inline onclick="..." handler, safe even with quotes in it.
-            jsArg(value) {
-                return this.escapeHtml(JSON.stringify(value));
             },
 
             sleep(ms) {

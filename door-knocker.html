@@ -3,25 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Door Knocker - Data Entry</title>
+    <title>Door Knocker</title>
+    <link rel="stylesheet" href="styles.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; padding: 1rem; }
-        .container { max-width: 600px; margin: 0 auto; }
-        header { background: white; padding: 1.5rem; border-radius: 12px 12px 0 0; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
-        header h1 { font-size: 1.6rem; color: #1a73e8; margin-bottom: 0.3rem; }
-        header p { font-size: 0.9rem; color: #666; }
-        .config-section { background: white; padding: 1rem; border-top: 1px solid #eee; display: flex; gap: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
-        .status { padding: 0.6rem 1rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; background: #f3f3f3; color: #666; }
-        .status.connected { background: #d4edda; color: #155724; }
-        main { background: white; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+        .container { max-width: 600px; }
         .form-group { margin-bottom: 1.3rem; }
         label { display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.95rem; color: #202124; }
         .required::after { content: " *"; color: #d33b27; }
-        input[type="text"], textarea, select { width: 100%; padding: 0.75rem; border: 1px solid #dadce0; border-radius: 4px; font-size: 1rem; font-family: inherit; }
-        input[type="text"]:focus, textarea:focus, select:focus { outline: none; border-color: #1a73e8; box-shadow: 0 0 0 2px rgba(26,115,232,0.1); }
+        input[type="text"], input[type="email"], input[type="tel"], textarea, select { width: 100%; padding: 0.75rem; border: 1px solid #dadce0; border-radius: 4px; font-size: 1rem; font-family: inherit; }
+        input:focus, textarea:focus, select:focus { outline: none; border-color: #1a73e8; box-shadow: 0 0 0 2px rgba(26,115,232,0.1); }
         #support-level.outcome-red { background: #fee2e2; border-color: #dc2626; color: #991b1b; }
-        #support-level.outcome-black { background: #1f2937; border-color: #111827; color: #fff; }
+        #support-level.outcome-dark { background: #1f2937; border-color: #111827; color: #fff; }
         #support-level.outcome-green { background: #dcfce7; border-color: #16a34a; color: #166534; }
         #support-level.outcome-yellow { background: #fef9c3; border-color: #eab308; color: #854d0e; }
         #support-level.outcome-gray { background: #e5e7eb; border-color: #9ca3af; color: #374151; }
@@ -34,95 +26,61 @@
         .message.show { display: block; }
         .success { background: #d4edda; color: #155724; }
         .error { background: #f8d7da; color: #721c24; }
-        button[type="submit"] { width: 100%; padding: 1rem; border: none; border-radius: 4px; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: all 0.2s; background: #1a73e8; color: white; }
-        button[type="submit"]:hover:not(:disabled) { background: #1557b0; box-shadow: 0 2px 6px rgba(26,115,232,0.3); }
-        button[type="submit"]:active:not(:disabled) { transform: translateY(1px); }
+        button[type="submit"] { width: 100%; padding: 1rem; border: none; border-radius: 4px; font-size: 1.1rem; font-weight: 700; cursor: pointer; background: #1a73e8; color: white; }
+        button[type="submit"]:hover:not(:disabled) { background: #1557b0; }
         button[type="submit"]:disabled { background: #ccc; cursor: not-allowed; opacity: 0.6; }
-        footer { background: white; padding: 1rem; text-align: center; font-size: 0.8rem; color: #999; margin-top: 1rem; border-radius: 0 0 12px 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
         @media (max-width: 600px) {
-            body { padding: 0.5rem; }
-            header h1 { font-size: 1.3rem; }
-            .config-section { flex-direction: column; }
             .checkbox-group { grid-template-columns: 1fr; }
-            input[type="text"], textarea, select { font-size: 16px; }
+            input, textarea, select { font-size: 16px; }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>📋 Door Knocker</h1>
-            <p>Coquitlam Canvassing Tool</p>
+            <h1>Door Knocker</h1>
+            <p>Coquitlam canvassing</p>
         </header>
 
-        <div class="config-section">
-            <div style="flex:1"></div>
-            <div id="connection-status" class="status">Disconnected</div>
+        <div class="status-bar">
+            <div id="connection-status" class="status">Connecting...</div>
         </div>
 
         <main>
-            <div id="message" class="message"></div>
+            <div id="message" class="message" role="status"></div>
 
             <form id="entry-form">
                 <div class="form-group">
-                    <label for="street-address" class="required">Street Address</label>
-                    <input type="text" id="street-address" required placeholder="e.g., 123 Smith Avenue" autofocus>
+                    <label for="street-address" class="required">Street address</label>
+                    <input type="text" id="street-address" required placeholder="e.g. 123 Smith Ave" autofocus>
                 </div>
 
                 <div class="form-group">
-                    <label for="unit-number">Unit Number</label>
-                    <input type="text" id="unit-number" placeholder="e.g., 205 or Suite B">
+                    <label for="unit-number">Unit</label>
+                    <input type="text" id="unit-number" placeholder="e.g. 205">
                 </div>
 
                 <div class="form-group">
-                    <label for="postal-code">Postal Code</label>
-                    <input type="text" id="postal-code" placeholder="e.g., V3E 3N3">
+                    <label for="postal-code">Postal code</label>
+                    <input type="text" id="postal-code" placeholder="e.g. V3E 3N3">
                 </div>
 
                 <div class="form-group">
-                    <label for="route-area">Polling Location / Area</label>
+                    <label for="route-area">Polling station</label>
                     <select id="route-area">
-                        <option value="">-- Select if known --</option>
-                        <option value="1 - Hillcrest">1 - Hillcrest</option>
-                        <option value="2 - Mundy Road">2 - Mundy Road</option>
-                        <option value="3 - Innovation">3 - Innovation</option>
-                        <option value="4 - Glen Elem.">4 - Glen Elem.</option>
-                        <option value="5 - Bramblewood">5 - Bramblewood</option>
-                        <option value="6 - Mountain View">6 - Mountain View</option>
-                        <option value="7 - Smiling Creek">7 - Smiling Creek</option>
-                        <option value="8 - Como Lake Middle">8 - Como Lake Middle</option>
-                        <option value="9 - Eagle Ridge Elem">9 - Eagle Ridge Elem</option>
-                        <option value="10 - Alderson">10 - Alderson</option>
-                        <option value="11 - Panorama">11 - Panorama</option>
-                        <option value="12 - Nestor">12 - Nestor</option>
-                        <option value="13 - Cape Horn">13 - Cape Horn</option>
-                        <option value="14 - Walton">14 - Walton</option>
-                        <option value="15 - Ranch Park">15 - Ranch Park</option>
-                        <option value="16 - Lord Baden">16 - Lord Baden</option>
-                        <option value="17 - Porter Street">17 - Porter Street</option>
-                        <option value="18 - Riverview">18 - Riverview</option>
-                        <option value="19 - Victoria Hall">19 - Victoria Hall</option>
-                        <option value="20 - Miller Park">20 - Miller Park</option>
-                        <option value="21 - Harbourview">21 - Harbourview</option>
-                        <option value="22 - Meadowbrook">22 - Meadowbrook</option>
-                        <option value="23 - Montgomery">23 - Montgomery</option>
+                        <option value="">Not sure</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label for="support-level" class="required">Door Result / Support Level</label>
-                    <select id="support-level" required onchange="doorKnocker.updateSupportLevelColor()">
-                        <option value="">-- Select result --</option>
-                        <option value="Not a Supporter">Not a Supporter</option>
-                        <option value="Not Home/No Answer">Not Home / No Answer</option>
-                        <option value="Supporter">Supporter</option>
-                        <option value="Undecided">Undecided</option>
-                        <option value="Not Voting/Can't Vote">Not Voting / Can't Vote</option>
+                    <label for="support-level" class="required">Door result</label>
+                    <select id="support-level" required>
+                        <option value="">Choose one</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label>Main Issues Discussed</label>
+                    <label>Issues raised</label>
                     <div class="checkbox-group">
                         <div class="checkbox-item">
                             <input type="checkbox" id="issue-housing" value="Housing" class="issue-checkbox">
@@ -146,7 +104,7 @@
                         </div>
                         <div class="checkbox-item">
                             <input type="checkbox" id="issue-parks" value="Parks and recreation" class="issue-checkbox">
-                            <label for="issue-parks">Parks & rec</label>
+                            <label for="issue-parks">Parks and rec</label>
                         </div>
                         <div class="checkbox-item">
                             <input type="checkbox" id="issue-business" value="Small business" class="issue-checkbox">
@@ -154,11 +112,11 @@
                         </div>
                         <div class="checkbox-item">
                             <input type="checkbox" id="issue-climate" value="Climate / environment" class="issue-checkbox">
-                            <label for="issue-climate">Climate / env</label>
+                            <label for="issue-climate">Climate</label>
                         </div>
                         <div class="checkbox-item">
                             <input type="checkbox" id="issue-dev" value="Development / zoning" class="issue-checkbox">
-                            <label for="issue-dev">Dev / zoning</label>
+                            <label for="issue-dev">Development and zoning</label>
                         </div>
                         <div class="checkbox-item">
                             <input type="checkbox" id="issue-services" value="City services" class="issue-checkbox">
@@ -172,167 +130,145 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="follow-up-needed">Follow-up Needed?</label>
+                    <label for="follow-up-needed">Follow-up needed?</label>
                     <select id="follow-up-needed">
-                        <option value="">-- Select if needed --</option>
+                        <option value="">Not asked</option>
                         <option value="No">No</option>
                         <option value="Yes">Yes</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label for="first-name">First Name</label>
-                    <input type="text" id="first-name">
+                    <label for="first-name">First name</label>
+                    <input type="text" id="first-name" autocomplete="off">
                 </div>
 
                 <div class="form-group">
-                    <label for="last-name">Last Name</label>
-                    <input type="text" id="last-name">
+                    <label for="last-name">Last name</label>
+                    <input type="text" id="last-name" autocomplete="off">
                 </div>
 
                 <div class="form-group">
                     <label for="email">Email</label>
-                    <input type="text" id="email">
+                    <input type="email" id="email" autocomplete="off">
                 </div>
 
                 <div class="form-group">
                     <label for="phone">Phone</label>
-                    <input type="text" id="phone">
+                    <input type="tel" id="phone" autocomplete="off">
                 </div>
 
                 <div class="form-group">
-                    <label>Lawn Sign</label>
                     <div class="checkbox-item">
                         <input type="checkbox" id="lawn-sign">
-                        <label for="lawn-sign">Yes</label>
+                        <label for="lawn-sign">Wants a lawn sign</label>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label for="notes">Notes</label>
-                    <textarea id="notes" placeholder="Any additional details..."></textarea>
+                    <textarea id="notes"></textarea>
                 </div>
 
-                <button type="submit">💾 Save Record</button>
+                <button type="submit">Save</button>
             </form>
         </main>
 
-        <footer>
-            Data syncs automatically to Google Drive
-        </footer>
+        <footer id="footer">Each response is saved to the campaign's Google Sheet.</footer>
     </div>
 
-        <script>
-        // Paste the Apps Script web app URL (ends in /exec) into the copy volunteers use. Don't commit it.
-        const DEFAULT_WEBAPP_URL = '';
-
+    <script src="shared.js"></script>
+    <script>
         const doorKnocker = {
-            apiUrl: DEFAULT_WEBAPP_URL,
-
             init() {
-                document.getElementById('entry-form').addEventListener('submit', (e) => {
-                    e.preventDefault();
+                const stations = document.getElementById('route-area');
+                POLLING_STATIONS.filter(station => station.kind === 'regular').forEach(station => stations.add(new Option(stationLabel(station))));
+                const outcomes = document.getElementById('support-level');
+                OUTCOMES.forEach((_, name) => outcomes.add(new Option(name)));
+                outcomes.addEventListener('change', () => this.colorOutcome());
+                document.getElementById('entry-form').addEventListener('submit', event => {
+                    event.preventDefault();
                     this.submitRecord();
                 });
-                this.testConnection();
+                this.checkConnection();
             },
 
-            testConnection() {
-                fetch(this.apiUrl)
-                    .then(r => r.json())
-                    .then(() => this.setConnected(true))
-                    .catch(() => this.setConnected(false));
-            },
-
-            setConnected(connected) {
-                const status = document.getElementById('connection-status');
-                if (connected) {
-                    status.textContent = '✓ Connected';
-                    status.className = 'status connected';
-                } else {
-                    status.textContent = 'Error';
-                    status.className = 'status';
+            checkConnection() {
+                if (DEMO) {
+                    this.setStatus('Demo data', true);
+                    document.getElementById('footer').textContent = 'Demo: responses are saved in this browser only.';
+                    return;
                 }
+                // Any JSON reply means the web app is reachable. The "Invalid action" answer is fine here.
+                fetch(WEBAPP_URL)
+                    .then(response => response.json())
+                    .then(() => this.setStatus('Connected', true))
+                    .catch(() => this.setStatus("Can't reach the sheet", false));
             },
 
-            updateSupportLevelColor() {
+            setStatus(text, ok) {
+                const status = document.getElementById('connection-status');
+                status.textContent = text;
+                status.className = ok ? 'status connected' : 'status';
+            },
+
+            colorOutcome() {
                 const select = document.getElementById('support-level');
-                select.className = '';
-                const outcomeClass = {
-                    'Not a Supporter': 'outcome-red',
-                    'Not Home/No Answer': 'outcome-black',
-                    'Supporter': 'outcome-green',
-                    'Undecided': 'outcome-yellow',
-                    "Not Voting/Can't Vote": 'outcome-gray'
-                }[select.value];
-                if (outcomeClass) select.classList.add(outcomeClass);
+                const outcome = OUTCOMES.get(select.value);
+                select.className = outcome ? 'outcome-' + outcome.tone : '';
             },
 
             async submitRecord() {
-                if (!this.apiUrl) {
-                    this.showMessage('Service URL not configured', 'error');
-                    return;
-                }
-
                 const form = document.getElementById('entry-form');
-                const issues = Array.from(document.querySelectorAll('.issue-checkbox:checked')).map(x => x.value);
-                const street = document.getElementById('street-address').value.trim();
-                const unit = document.getElementById('unit-number').value.trim();
-                const postalCode = document.getElementById('postal-code').value.trim();
+                const value = id => document.getElementById(id).value.trim();
+                const street = value('street-address');
+                const unit = value('unit-number');
                 const doorId = unit ? `${street} Unit ${unit}` : street;
-
-                const submitBtn = form.querySelector('button[type="submit"]');
-                submitBtn.disabled = true;
+                const submitButton = form.querySelector('button[type="submit"]');
+                submitButton.disabled = true;
 
                 try {
-                    const params = new URLSearchParams({
+                    await api({
                         action: 'addDoor',
                         timestamp: new Date().toISOString(),
                         streetAddress: street,
                         unitNumber: unit,
-                        postalCode: postalCode,
-                        routeArea: document.getElementById('route-area').value,
-                        supportLevel: document.getElementById('support-level').value,
-                        mainIssueDiscussed: issues.join('; '),
-                        followUpNeeded: document.getElementById('follow-up-needed').value,
-                        firstName: document.getElementById('first-name').value.trim(),
-                        lastName: document.getElementById('last-name').value.trim(),
-                        email: document.getElementById('email').value.trim(),
-                        phone: document.getElementById('phone').value.trim(),
+                        postalCode: value('postal-code'),
+                        routeArea: value('route-area'),
+                        supportLevel: value('support-level'),
+                        mainIssueDiscussed: [...document.querySelectorAll('.issue-checkbox:checked')].map(box => box.value).join('; '),
+                        followUpNeeded: value('follow-up-needed'),
+                        firstName: value('first-name'),
+                        lastName: value('last-name'),
+                        email: value('email'),
+                        phone: value('phone'),
                         lawnSign: document.getElementById('lawn-sign').checked ? 'Yes' : 'No',
                         contacted: 'Yes',
-                        notes: document.getElementById('notes').value.trim(),
+                        notes: value('notes'),
                         mapAddress: `${street}, Coquitlam, BC`,
                         latitude: '',
                         longitude: '',
-                        doorId: doorId
-                    });
-
-                    const response = await fetch(this.apiUrl, { method: 'POST', body: params });
-                    const data = await response.json();
-
-                    if (data.success) {
-                        this.showMessage('✓ ' + doorId, 'success');
-                        const route = document.getElementById('route-area').value;
+                        doorId
+                    }, true);
+                    this.showMessage('Saved ' + doorId, 'success');
+                    // Volunteers walk one area at a time, so keep the station for the next door.
+                    const station = value('route-area');
                     form.reset();
-                    this.updateSupportLevelColor();
-                        document.getElementById('route-area').value = route;
-                        document.getElementById('street-address').focus();
-                    } else {
-                        this.showMessage('Error: ' + (data.error || 'Unknown'), 'error');
-                    }
+                    this.colorOutcome();
+                    document.getElementById('route-area').value = station;
+                    document.getElementById('street-address').focus();
                 } catch (error) {
-                    this.showMessage('Network error', 'error');
+                    this.showMessage(error instanceof TypeError ? "Couldn't reach the sheet. Try again." : 'Not saved: ' + error.message, 'error');
                 } finally {
-                    submitBtn.disabled = false;
+                    submitButton.disabled = false;
                 }
             },
 
             showMessage(text, type) {
-                const msgDiv = document.getElementById('message');
-                msgDiv.textContent = text;
-                msgDiv.className = 'message show ' + type;
-                setTimeout(() => msgDiv.classList.remove('show'), 3500);
+                const message = document.getElementById('message');
+                message.textContent = text;
+                message.className = 'message show ' + type;
+                setTimeout(() => message.classList.remove('show'), 3500);
             }
         };
 

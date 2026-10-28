@@ -1,4 +1,4 @@
-// Backend for door-knocker.html and analysis.html.
+// Backend for door-knocker.html and dashboard.html. It keeps everything in the spreadsheet it is bound to.
 // Deploy as a web app: Execute as me, Who has access: Anyone.
 // Anyone with the URL can add door-knocker responses. Every other action needs the admin key,
 // set as the ADMIN_KEY script property (Project Settings > Script properties).
@@ -298,15 +298,13 @@ function deleteSavedRoute(e) {
   return jsonResponse(true, { routeId });
 }
 
+// 'Follow-up Needed?' -> 'followUpNeeded'. Records use these names as keys.
 function toCamelCase(str) {
   return str
-    .split(/[\s\-_?]+/)  // Split on spaces, dashes, underscores, question marks
-    .map((word, index) => {
-      if (index === 0) return word.toLowerCase();  // First word: lowercase
-      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();  // Other words: capitalize first letter
-    })
+    .split(/[\s\-_?]+/)
+    .map((word, index) => index === 0 ? word.toLowerCase() : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join('')
-    .replace(/[^a-zA-Z0-9]/g, '');  // Remove any remaining special characters
+    .replace(/[^a-zA-Z0-9]/g, '');
 }
 
 function ensureCanonicalSheet(sheet) {
