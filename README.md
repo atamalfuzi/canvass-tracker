@@ -4,7 +4,9 @@ I built this for a 2026 municipal campaign in Coquitlam, BC. Volunteers log each
 
 **Demo:** https://atamalfuzi.github.io/canvass-tracker/
 
-The demo runs in your browser on 300 made-up doors and needs no Google account. The people, streets, phone numbers and emails are invented. The polling stations are the real public venues.
+The demo runs in your browser on 300 made-up doors and needs no Google account. The people, phone numbers and emails are invented, and the street names were checked so that none matches a real street in Coquitlam, Port Coquitlam or Port Moody. The polling stations are the real public venues.
+
+![The dashboard's map tab: doors coloured by result, clustered around numbered polling stations, with the station list on the right](docs/dashboard-map.jpg)
 
 ## What's here
 

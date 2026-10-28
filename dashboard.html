@@ -47,7 +47,7 @@
         .progress-label { display: flex; justify-content: space-between; gap: 0.75rem; font-weight: 700; }
         .progress-detail { color: #475569; font-size: 0.78rem; }
         .progress-track { height: 7px; overflow: hidden; border-radius: 999px; background: rgba(59, 130, 246, 0.16); }
-        .progress-fill { height: 100%; width: 0%; border-radius: inherit; background: #2563eb; transition: width 180ms ease; }
+        .progress-fill { height: 100%; border-radius: inherit; background: #2563eb; transform: scaleX(0); transform-origin: left; transition: transform 180ms ease; }
         .marker-list { max-height: 320px; overflow: auto; display: flex; flex-direction: column; gap: 0.5rem; }
         .marker-item { background: white; border: 1px solid #e5e7eb; border-radius: 10px; padding: 0.75rem; display: flex; gap: 0.75rem; align-items: flex-start; }
         .marker-item input { margin-top: 0.2rem; }
@@ -665,7 +665,7 @@
                 const percent = total > 0 ? Math.round((done / total) * 100) : 100;
                 document.getElementById('geocodeProgressTitle').textContent = title;
                 document.getElementById('geocodeProgressCount').textContent = total > 0 ? `${done}/${total}` : 'Done';
-                document.getElementById('geocodeProgressFill').style.width = `${percent}%`;
+                document.getElementById('geocodeProgressFill').style.transform = `scaleX(${percent / 100})`;
                 document.getElementById('geocodeProgressDetail').textContent = detail;
             },
 
